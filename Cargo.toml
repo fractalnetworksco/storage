@@ -6,5 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rocket = "0.5-rc"
+rocket = "0.5.0-rc"
 structopt = "0.3.21"
+anyhow = "1.0.38"
+rand = "0.8.3"
+ed25519-dalek-fiat = "0.1.0"
+sha2 = "0.9.3"
+hex = "0.4.3"
+sqlx = { version = "0.5", features = [ "runtime-tokio-rustls" ] }
+env_logger = "0.8.3"
