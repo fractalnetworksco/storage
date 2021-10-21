@@ -1,5 +1,5 @@
-use rocket::request::FromParam;
 use rocket::http::Status;
+use rocket::request::FromParam;
 
 pub struct Pubkey([u8; 32]);
 pub struct Privkey([u8; 32]);

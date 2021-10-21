@@ -1,11 +1,11 @@
 mod api;
-mod keys;
 mod info;
+mod keys;
 
 use rocket::fs::TempFile;
 use rocket::*;
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 #[derive(StructOpt)]
 struct Options {
