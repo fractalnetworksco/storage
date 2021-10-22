@@ -34,6 +34,9 @@ body = header + data + signature
 
 http = Net::HTTP.new("localhost", 8002)
 response = http.request_post("/snapshot/#{pubkey_hex}/create", "")
+puts response
 response = http.request_post("/snapshot/#{pubkey_hex}/upload", body)
+puts response
+response =  http.request_get("/snapshot/#{pubkey_hex}/latest")
 puts response
 puts response.body

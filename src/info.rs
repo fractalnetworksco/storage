@@ -16,6 +16,41 @@ pub struct SnapshotHeader {
     pub creation: u64,
 }
 
+impl SnapshotHeader {
+    pub fn from_bytes(data: &[u8]) -> Result<Self> {
+        let mut reader = Cursor::new(data);
+        Ok(SnapshotHeader {
+            generation: reader.read_u64::<BigEndian>()?,
+            parent: match reader.read_u64::<BigEndian>()? {
+                0 => None,
+                value => Some(value),
+            },
+            creation: reader.read_u64::<BigEndian>()?,
+        })
+    }
+
+    pub fn to_info(&self, size: u64) -> SnapshotInfo {
+        SnapshotInfo {
+            generation: self.generation,
+            parent: self.parent,
+            size: size,
+            creation: self.creation,
+        }
+    }
+
+    pub fn path(&self, volume: &Pubkey) -> PathBuf {
+        let mut path = PathBuf::new();
+        path.push(volume.to_hex());
+        if let Some(parent) = self.parent {
+            path.push(format!("{}-{}.snap", self.generation, parent));
+        } else {
+            path.push(format!("{}.snap", self.generation));
+        }
+        path
+    }
+}
+
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SnapshotInfo {
     pub generation: u64,
@@ -44,7 +79,7 @@ impl SnapshotInfo {
                 JOIN storage_volume
                     ON storage_volume.volume_id = storage_snapshot.volume_id
                 WHERE volume_pubkey = ?
-                    AND snapshot_parent = ?",
+                    AND snapshot_parent IS ?",
         )
         .bind(volume.as_slice())
         .bind(parent.map(|parent| parent as i64))
@@ -66,7 +101,7 @@ impl SnapshotInfo {
                     ON storage_volume.volume_id = storage_snapshot.volume_id
                 WHERE volume_pubkey = ?
                     AND snapshot_generation = ?
-                    AND snapshot_parent = ?",
+                    AND snapshot_parent IS ?",
         )
         .bind(volume.as_slice())
         .bind(generation as i64)
@@ -78,16 +113,6 @@ impl SnapshotInfo {
             Some(row) => Ok(Some(Self::from_row(&row)?)),
             None => Ok(None),
         }
-    }
-
-    pub fn from_header(data: &[u8]) -> Result<Self> {
-        let mut reader = Cursor::new(data);
-        Ok(SnapshotInfo {
-            generation: reader.read_u64::<BigEndian>()?,
-            parent: Some(reader.read_u64::<BigEndian>()?),
-            creation: reader.read_u64::<BigEndian>()?,
-            size: reader.read_u64::<BigEndian>()?,
-        })
     }
 
     pub async fn exists(&self, pool: &SqlitePool, volume: &Pubkey) -> Result<bool> {
@@ -105,7 +130,7 @@ impl SnapshotInfo {
         path
     }
 
-    pub async fn register(&self, pool: &SqlitePool, volume: &Pubkey, size: usize) -> Result<()> {
+    pub async fn register(&self, pool: &SqlitePool, volume: &Pubkey) -> Result<()> {
         query(
             "INSERT INTO storage_snapshot(volume_id, snapshot_generation, snapshot_parent, snapshot_time, snapshot_size)
                 VALUES ((SELECT volume_id FROM storage_volume WHERE volume_pubkey = ?), ?, ?, ?, ?)")
@@ -113,7 +138,7 @@ impl SnapshotInfo {
             .bind(self.generation as i64)
             .bind(self.parent.map(|i| i as i64))
             .bind(self.creation as i64)
-            .bind(size as i64)
+            .bind(self.size as i64)
             .execute(pool)
             .await?;
         Ok(())

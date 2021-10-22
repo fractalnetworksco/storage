@@ -1,4 +1,4 @@
-use crate::info::{SnapshotInfo, SNAPSHOT_HEADER_SIZE};
+use crate::info::{SnapshotInfo, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
 use crate::keys::Pubkey;
 use crate::Options;
 use crate::db::Volume;
@@ -32,7 +32,7 @@ async fn snapshot_upload(
 ) -> std::io::Result<()> {
     // parse header from snapshot data
     let header = data.peek(SNAPSHOT_HEADER_SIZE).await;
-    let header = SnapshotInfo::from_header(header).unwrap();
+    let header = SnapshotHeader::from_bytes(header).unwrap();
 
     // TODO: check if snapshot exists
     if let Ok(Some(info)) =
@@ -51,7 +51,8 @@ async fn snapshot_upload(
     data.stream_to(tokio::io::BufWriter::new(&mut file)).await?;
     // TODO: generate hash to check signature
 
-    header.register(pool, &volume, 0).await.unwrap();
+    let header = header.to_info(file.metadata().await?.len());
+    header.register(pool, &volume).await.unwrap();
     Ok(())
 }
 
