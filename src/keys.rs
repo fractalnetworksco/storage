@@ -20,4 +20,8 @@ impl Pubkey {
     pub fn as_slice(&self) -> &[u8] {
         &self.0[..]
     }
+
+    pub fn to_hex(&self) -> String {
+        hex::encode(&self.0)
+    }
 }

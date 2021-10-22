@@ -1,8 +1,11 @@
 use crate::keys::Pubkey;
 use anyhow::Result;
+use byteorder::{BigEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
 use sqlx::{query, Row, SqlitePool};
+use std::io::Cursor;
+use std::path::PathBuf;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 
@@ -44,6 +47,31 @@ impl SnapshotInfo {
     }
 
     pub fn from_header(data: &[u8]) -> Result<Self> {
-        unimplemented!()
+        let mut reader = Cursor::new(data);
+        Ok(SnapshotInfo {
+            generation: reader.read_u64::<BigEndian>()?,
+            parent: Some(reader.read_u64::<BigEndian>()?),
+            creation: Some(reader.read_u64::<BigEndian>()?),
+            size: reader.read_u64::<BigEndian>()?,
+        })
+    }
+
+    pub async fn exists(&self, pool: &SqlitePool, volume: &Pubkey) -> Result<bool> {
+        Ok(false)
+    }
+
+    pub fn path(&self, volume: &Pubkey) -> PathBuf {
+        let mut path = PathBuf::new();
+        path.push(volume.to_hex());
+        if let Some(parent) = self.parent {
+            path.push(format!("{}-{}.snap", self.generation, parent));
+        } else {
+            path.push(format!("{}.snap", self.generation));
+        }
+        path
+    }
+
+    pub async fn register(&self, pool: &SqlitePool, volume: &Pubkey) -> Result<()> {
+        Ok(())
     }
 }
