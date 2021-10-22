@@ -1,4 +1,4 @@
-use crate::info::SnapshotInfo;
+use crate::info::{SNAPSHOT_HEADER_SIZE, SnapshotInfo};
 use crate::keys::Pubkey;
 use rocket::data::ToByteUnit;
 use rocket::fs::TempFile;
@@ -7,7 +7,9 @@ use rocket::*;
 use sqlx::{query, SqlitePool};
 
 #[post("/snapshot/<volume>/upload", data = "<data>")]
-async fn upload(mut data: TempFile<'_>, volume: Pubkey) -> std::io::Result<()> {
+async fn upload(mut data: Data<'_>, volume: Pubkey) -> std::io::Result<()> {
+    let header = data.peek(SNAPSHOT_HEADER_SIZE).await;
+    let header = SnapshotInfo::from_header(header).unwrap();
     //file.persist_to(permanent_location).await
     Ok(())
 }
@@ -18,19 +20,8 @@ async fn latest(
     parent: Option<u64>,
     volume: Pubkey,
 ) -> Json<SnapshotInfo> {
-    let row = query(
-        "SELECT * FROM storage_snapshot
-            JOIN storage_volume
-                ON storage_volume.volume_id = storage_snapshot.volume_id
-            WHERE volume_pubkey = ?
-                AND snapshot_parent = ?",
-    )
-    .bind(volume.as_slice())
-    .bind(parent.map(|parent| parent as i64))
-    .fetch_one(pool.inner())
-    .await
-    .unwrap();
-    Json(SnapshotInfo::from_row(&row).unwrap())
+    let info = SnapshotInfo::latest(pool, &volume, parent).await.unwrap();
+    Json(info)
 }
 
 #[get("/snapshot/<volume>/fetch?<generation>&<parent>")]

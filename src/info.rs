@@ -1,7 +1,10 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
-use sqlx::Row;
+use sqlx::{SqlitePool, Row, query};
+use crate::keys::Pubkey;
+
+pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SnapshotInfo {
@@ -22,5 +25,25 @@ impl SnapshotInfo {
             creation: None,
             size: size.try_into()?,
         })
+    }
+
+    pub async fn latest(pool: &SqlitePool, volume: &Pubkey, parent: Option<u64>) -> Result<Self> {
+        let row = query(
+            "SELECT * FROM storage_snapshot
+                JOIN storage_volume
+                    ON storage_volume.volume_id = storage_snapshot.volume_id
+                WHERE volume_pubkey = ?
+                    AND snapshot_parent = ?",
+        )
+        .bind(volume.as_slice())
+        .bind(parent.map(|parent| parent as i64))
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        Ok(Self::from_row(&row).unwrap())
+    }
+
+    pub fn from_header(data: &[u8]) -> Result<Self> {
+        unimplemented!()
     }
 }
