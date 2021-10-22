@@ -21,15 +21,23 @@ async fn main() {
 
     let options = Options::from_args();
 
+    // create database if not exists
     if !options.database.exists() {
         info!("Creating database file");
         tokio::fs::File::create(&options.database).await.unwrap();
     }
 
-    let database_path = options.database.into_os_string().into_string().unwrap();
+    // connect to database
+    let database_path = options
+        .database
+        .clone()
+        .into_os_string()
+        .into_string()
+        .unwrap();
     let pool = sqlx::SqlitePool::connect(&database_path).await.unwrap();
     sqlx::migrate!().run(&pool).await.unwrap();
 
+    // make sure storage folder exists
     if !options.storage.is_dir() {
         error!("Storage folder does not exists");
         return;
@@ -38,8 +46,10 @@ async fn main() {
     rocket::build()
         .mount("/", api::routes())
         .manage(pool)
+        .manage(options)
         .launch()
-        .await;
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
