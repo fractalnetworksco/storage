@@ -1,4 +1,4 @@
-use crate::info::{SNAPSHOT_HEADER_SIZE, SnapshotInfo};
+use crate::info::{SnapshotInfo, SNAPSHOT_HEADER_SIZE};
 use crate::keys::Pubkey;
 use rocket::data::ToByteUnit;
 use rocket::fs::TempFile;

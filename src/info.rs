@@ -1,8 +1,8 @@
+use crate::keys::Pubkey;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
-use sqlx::{SqlitePool, Row, query};
-use crate::keys::Pubkey;
+use sqlx::{query, Row, SqlitePool};
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 
