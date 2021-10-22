@@ -1,6 +1,7 @@
 mod api;
 mod info;
 mod keys;
+mod db;
 
 use rocket::fs::TempFile;
 use rocket::*;

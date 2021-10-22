@@ -33,6 +33,7 @@ puts "Signature: #{signature.unpack("H*").first}"
 body = header + data + signature
 
 http = Net::HTTP.new("localhost", 8002)
+response = http.request_post("/snapshot/#{pubkey_hex}/create", "")
 response = http.request_post("/snapshot/#{pubkey_hex}/upload", body)
 puts response
 puts response.body

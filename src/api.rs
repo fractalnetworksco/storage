@@ -1,6 +1,7 @@
 use crate::info::{SnapshotInfo, SNAPSHOT_HEADER_SIZE};
 use crate::keys::Pubkey;
 use crate::Options;
+use crate::db::Volume;
 use rocket::data::{ByteUnit, ToByteUnit};
 use rocket::fs::TempFile;
 use rocket::serde::json::Json;
@@ -12,8 +13,18 @@ pub fn snapshot_size_max() -> ByteUnit {
     1.terabytes()
 }
 
+#[post("/snapshot/<volume>/create")]
+async fn volume_create(
+    pool: &State<SqlitePool>,
+    options: &State<Options>,
+    volume: Pubkey,
+) -> () {
+    Volume::create(pool, &volume).await.unwrap();
+    ()
+}
+
 #[post("/snapshot/<volume>/upload", data = "<data>")]
-async fn upload(
+async fn snapshot_upload(
     mut data: Data<'_>,
     pool: &State<SqlitePool>,
     options: &State<Options>,
@@ -24,7 +35,9 @@ async fn upload(
     let header = SnapshotInfo::from_header(header).unwrap();
 
     // TODO: check if snapshot exists
-    if let Ok(Some(info)) = SnapshotInfo::lookup(pool, &volume, header.generation, header.parent).await {
+    if let Ok(Some(info)) =
+        SnapshotInfo::lookup(pool, &volume, header.generation, header.parent).await
+    {
         return Ok(());
     }
 
@@ -43,7 +56,7 @@ async fn upload(
 }
 
 #[get("/snapshot/<volume>/latest?<parent>")]
-async fn latest(
+async fn snapshot_latest(
     pool: &State<SqlitePool>,
     parent: Option<u64>,
     volume: Pubkey,
@@ -53,10 +66,10 @@ async fn latest(
 }
 
 #[get("/snapshot/<volume>/fetch?<generation>&<parent>")]
-async fn fetch(volume: Pubkey, generation: u64, parent: Option<u64>) -> String {
+async fn snapshot_fetch(volume: Pubkey, generation: u64, parent: Option<u64>) -> String {
     unimplemented!()
 }
 
 pub fn routes() -> Vec<Route> {
-    routes![upload, latest, fetch]
+    routes![volume_create, snapshot_upload, snapshot_latest, snapshot_fetch]
 }

@@ -10,5 +10,5 @@ CREATE TABLE storage_snapshot(
     snapshot_parent INTEGER,
     snapshot_size INTEGER NOT NULL,
     snapshot_time INTEGER NOT NULL,
-    PRIMARY KEY (snapshot_generation, snapshot_parent)
+    PRIMARY KEY (volume_id, snapshot_generation, snapshot_parent)
 );

@@ -54,7 +54,12 @@ impl SnapshotInfo {
         Ok(Self::from_row(&row).unwrap())
     }
 
-    pub async fn lookup(pool: &SqlitePool, volume: &Pubkey, generation: u64, parent: Option<u64>) -> Result<Option<Self>> {
+    pub async fn lookup(
+        pool: &SqlitePool,
+        volume: &Pubkey,
+        generation: u64,
+        parent: Option<u64>,
+    ) -> Result<Option<Self>> {
         let row = query(
             "SELECT * FROM storage_snapshot
                 JOIN storage_volume
@@ -71,7 +76,7 @@ impl SnapshotInfo {
         .unwrap();
         match row {
             Some(row) => Ok(Some(Self::from_row(&row)?)),
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
