@@ -10,10 +10,17 @@ use std::path::PathBuf;
 pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SnapshotHeader {
+    pub generation: u64,
+    pub parent: Option<u64>,
+    pub creation: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SnapshotInfo {
     pub generation: u64,
     pub parent: Option<u64>,
-    pub creation: Option<u64>,
+    pub creation: u64,
     pub size: u64,
 }
 
@@ -22,10 +29,11 @@ impl SnapshotInfo {
         let generation: i64 = row.try_get("snapshot_generation")?;
         let parent: Option<i64> = row.try_get("snapshot_parent")?;
         let size: i64 = row.try_get("snapshot_size")?;
+        let creation: i64 = row.try_get("snapshot_time")?;
         Ok(SnapshotInfo {
             generation: generation.try_into()?,
             parent: parent.map(|parent| parent as u64),
-            creation: None,
+            creation: creation.try_into()?,
             size: size.try_into()?,
         })
     }
@@ -46,12 +54,33 @@ impl SnapshotInfo {
         Ok(Self::from_row(&row).unwrap())
     }
 
+    pub async fn lookup(pool: &SqlitePool, volume: &Pubkey, generation: u64, parent: Option<u64>) -> Result<Option<Self>> {
+        let row = query(
+            "SELECT * FROM storage_snapshot
+                JOIN storage_volume
+                    ON storage_volume.volume_id = storage_snapshot.volume_id
+                WHERE volume_pubkey = ?
+                    AND snapshot_generation = ?
+                    AND snapshot_parent = ?",
+        )
+        .bind(volume.as_slice())
+        .bind(generation as i64)
+        .bind(parent.map(|parent| parent as i64))
+        .fetch_optional(pool)
+        .await
+        .unwrap();
+        match row {
+            Some(row) => Ok(Some(Self::from_row(&row)?)),
+            None => Ok(None)
+        }
+    }
+
     pub fn from_header(data: &[u8]) -> Result<Self> {
         let mut reader = Cursor::new(data);
         Ok(SnapshotInfo {
             generation: reader.read_u64::<BigEndian>()?,
             parent: Some(reader.read_u64::<BigEndian>()?),
-            creation: Some(reader.read_u64::<BigEndian>()?),
+            creation: reader.read_u64::<BigEndian>()?,
             size: reader.read_u64::<BigEndian>()?,
         })
     }
@@ -71,7 +100,17 @@ impl SnapshotInfo {
         path
     }
 
-    pub async fn register(&self, pool: &SqlitePool, volume: &Pubkey) -> Result<()> {
+    pub async fn register(&self, pool: &SqlitePool, volume: &Pubkey, size: usize) -> Result<()> {
+        query(
+            "INSERT INTO storage_snapshot(volume_id, snapshot_generation, snapshot_parent, snapshot_time, snapshot_size)
+                VALUES ((SELECT volume_id FROM storage_volume WHERE volume_pubkey = ?), ?, ?, ?, ?)")
+            .bind(volume.as_slice())
+            .bind(self.generation as i64)
+            .bind(self.parent.map(|i| i as i64))
+            .bind(self.creation as i64)
+            .bind(size as i64)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 }

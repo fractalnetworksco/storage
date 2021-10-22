@@ -1,5 +1,6 @@
 use crate::info::{SnapshotInfo, SNAPSHOT_HEADER_SIZE};
 use crate::keys::Pubkey;
+use crate::Options;
 use rocket::data::{ByteUnit, ToByteUnit};
 use rocket::fs::TempFile;
 use rocket::serde::json::Json;
@@ -15,6 +16,7 @@ pub fn snapshot_size_max() -> ByteUnit {
 async fn upload(
     mut data: Data<'_>,
     pool: &State<SqlitePool>,
+    options: &State<Options>,
     volume: Pubkey,
 ) -> std::io::Result<()> {
     // parse header from snapshot data
@@ -22,17 +24,21 @@ async fn upload(
     let header = SnapshotInfo::from_header(header).unwrap();
 
     // TODO: check if snapshot exists
+    if let Ok(Some(info)) = SnapshotInfo::lookup(pool, &volume, header.generation, header.parent).await {
+        return Ok(());
+    }
 
     // open the entire data stream
     let data = data.open(snapshot_size_max());
 
     // write data stream to file
-    let path = header.path(&volume);
+    let path = options.storage.join(header.path(&volume));
+    tokio::fs::create_dir(path.parent().unwrap()).await?;
     let mut file = File::create(&path).await.unwrap();
     data.stream_to(tokio::io::BufWriter::new(&mut file)).await?;
     // TODO: generate hash to check signature
 
-    header.register(pool, &volume).await.unwrap();
+    header.register(pool, &volume, 0).await.unwrap();
     Ok(())
 }
 
