@@ -2,7 +2,7 @@ use rocket::http::Status;
 use rocket::request::FromParam;
 
 #[derive(Clone, Debug)]
-pub struct Pubkey([u8; 32]);
+pub struct Pubkey(pub [u8; 32]);
 
 #[derive(Clone, Debug)]
 pub struct Privkey([u8; 32]);
