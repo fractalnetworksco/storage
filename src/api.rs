@@ -1,7 +1,7 @@
-use crate::info::{SnapshotInfo, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
+use crate::db::Volume;
+use crate::info::{SnapshotHeader, SnapshotInfo, SNAPSHOT_HEADER_SIZE};
 use crate::keys::Pubkey;
 use crate::Options;
-use crate::db::Volume;
 use rocket::data::{ByteUnit, ToByteUnit};
 use rocket::fs::TempFile;
 use rocket::serde::json::Json;
@@ -14,11 +14,7 @@ pub fn snapshot_size_max() -> ByteUnit {
 }
 
 #[post("/snapshot/<volume>/create")]
-async fn volume_create(
-    pool: &State<SqlitePool>,
-    options: &State<Options>,
-    volume: Pubkey,
-) -> () {
+async fn volume_create(pool: &State<SqlitePool>, options: &State<Options>, volume: Pubkey) -> () {
     Volume::create(pool, &volume).await.unwrap();
     ()
 }
@@ -85,12 +81,17 @@ async fn snapshot_fetch(
     pool: &State<SqlitePool>,
     volume: Pubkey,
     generation: u64,
-    parent: Option<u64>
+    parent: Option<u64>,
 ) -> String {
     let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
     unimplemented!()
 }
 
 pub fn routes() -> Vec<Route> {
-    routes![volume_create, snapshot_upload, snapshot_latest, snapshot_fetch]
+    routes![
+        volume_create,
+        snapshot_upload,
+        snapshot_latest,
+        snapshot_fetch
+    ]
 }

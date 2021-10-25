@@ -50,7 +50,6 @@ impl SnapshotHeader {
     }
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SnapshotInfo {
     pub generation: u64,
