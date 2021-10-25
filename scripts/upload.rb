@@ -33,10 +33,14 @@ puts "Signature: #{signature.unpack("H*").first}"
 body = header + data + signature
 
 http = Net::HTTP.new("localhost", 8002)
+#http.set_debug_output $stderr
 response = http.request_post("/snapshot/#{pubkey_hex}/create", "")
 puts response
 response = http.request_post("/snapshot/#{pubkey_hex}/upload", body)
 puts response
-response =  http.request_get("/snapshot/#{pubkey_hex}/latest")
+#response =  http.request_get("/snapshot/#{pubkey_hex}/latest")
+#puts response
+#puts response.body
+response = http.request_get("/snapshot/#{pubkey_hex}/fetch?generation=1234")
 puts response
-puts response.body
+p response.body

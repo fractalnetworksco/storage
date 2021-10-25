@@ -1,4 +1,4 @@
-use crate::info::SnapshotInfo;
+use crate::info::{Snapshot, SnapshotInfo};
 use crate::keys::Pubkey;
 use anyhow::Result;
 use sqlx::sqlite::SqliteRow;
@@ -69,5 +69,24 @@ impl Volume {
             .execute(pool)
             .await?;
         Ok(())
+    }
+
+    pub async fn snapshot(&self, pool: &SqlitePool, generation: u64, parent: Option<u64>) -> Result<Option<Snapshot>> {
+        let row = query(
+            "SELECT * FROM storage_snapshot
+                WHERE volume_id = ?
+                    AND snapshot_generation = ?
+                    AND snapshot_parent IS ?",
+        )
+        .bind(self.id as i64)
+        .bind(generation as i64)
+        .bind(parent.map(|parent| parent as i64))
+        .fetch_optional(pool)
+        .await
+        .unwrap();
+        match row {
+            Some(row) => Ok(Some(Snapshot::from_row(&row)?)),
+            None => Ok(None),
+        }
     }
 }

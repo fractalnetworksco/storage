@@ -130,7 +130,7 @@ impl Snapshot {
         Ok(false)
     }
 
-    pub fn path(&self, volume: &Pubkey) -> &Path {
+    pub fn file(&self) -> &Path {
         &self.file
     }
 

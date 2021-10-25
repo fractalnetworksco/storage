@@ -8,6 +8,7 @@ use rocket::serde::json::Json;
 use rocket::*;
 use sqlx::{query, SqlitePool};
 use tokio::fs::File;
+use rocket::response::stream::ReaderStream;
 
 pub fn snapshot_size_max() -> ByteUnit {
     1.terabytes()
@@ -89,12 +90,16 @@ async fn snapshot_list(
 #[get("/snapshot/<volume>/fetch?<generation>&<parent>")]
 async fn snapshot_fetch(
     pool: &State<SqlitePool>,
+    options: &State<Options>,
     volume: Pubkey,
     generation: u64,
     parent: Option<u64>,
-) -> String {
+) -> ReaderStream![File] {
     let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
-    unimplemented!()
+    let snapshot = volume.snapshot(pool, generation, parent).await.unwrap().unwrap();
+    let path = options.storage.join(snapshot.file());
+    let file = File::open(path).await.unwrap();
+    ReaderStream::one(file)
 }
 
 pub fn routes() -> Vec<Route> {
