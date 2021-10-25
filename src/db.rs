@@ -71,7 +71,12 @@ impl Volume {
         Ok(())
     }
 
-    pub async fn snapshot(&self, pool: &SqlitePool, generation: u64, parent: Option<u64>) -> Result<Option<Snapshot>> {
+    pub async fn snapshot(
+        &self,
+        pool: &SqlitePool,
+        generation: u64,
+        parent: Option<u64>,
+    ) -> Result<Option<Snapshot>> {
         let row = query(
             "SELECT * FROM storage_snapshot
                 WHERE volume_id = ?

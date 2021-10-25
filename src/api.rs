@@ -4,11 +4,11 @@ use crate::keys::Pubkey;
 use crate::Options;
 use rocket::data::{ByteUnit, ToByteUnit};
 use rocket::fs::TempFile;
+use rocket::response::stream::ReaderStream;
 use rocket::serde::json::Json;
 use rocket::*;
 use sqlx::{query, SqlitePool};
 use tokio::fs::File;
-use rocket::response::stream::ReaderStream;
 
 pub fn snapshot_size_max() -> ByteUnit {
     1.terabytes()
@@ -96,7 +96,11 @@ async fn snapshot_fetch(
     parent: Option<u64>,
 ) -> ReaderStream![File] {
     let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
-    let snapshot = volume.snapshot(pool, generation, parent).await.unwrap().unwrap();
+    let snapshot = volume
+        .snapshot(pool, generation, parent)
+        .await
+        .unwrap()
+        .unwrap();
     let path = options.storage.join(snapshot.file());
     let file = File::open(path).await.unwrap();
     ReaderStream::one(file)
