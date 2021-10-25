@@ -53,7 +53,9 @@ puts create(http, privkey)
 #puts latest(http, privkey).body
 puts upload(http, privkey, "Somerandomdata", 1234, 0, Time.now.to_i)
 puts latest(http, privkey).body
-#puts upload(http, privkey, "Otherrandomdata", 1235, 1234, Time.now.to_i)
-puts fetch(http, privkey, 1234).body[24..-64]
-#puts fetch(http, privkey, 1235, 1234).body[24..-64]
+puts upload(http, privkey, "Otherrandomdata", 1235, 1234, Time.now.to_i)
+puts latest(http, privkey).body
+puts latest(http, privkey, 1234).body
+puts fetch(http, privkey, 1234).body[24..-65]
+puts fetch(http, privkey, 1235, 1234).body[24..-65]
 
