@@ -2,6 +2,8 @@ use crate::keys::Pubkey;
 use anyhow::Result;
 use sqlx::sqlite::SqliteRow;
 use sqlx::{query, Row, SqlitePool};
+use crate::info::SnapshotInfo;
+use std::path::Path;
 
 #[derive(Clone, Debug)]
 pub struct Volume {
@@ -48,4 +50,20 @@ impl Volume {
     pub fn pubkey(&self) -> &Pubkey {
         &self.pubkey
     }
+
+    pub async fn register(&self, pool: &SqlitePool, snapshot: &SnapshotInfo, file: &str) -> Result<()> {
+        query(
+            "INSERT INTO storage_snapshot(volume_id, snapshot_generation, snapshot_parent, snapshot_time, snapshot_size, snapshot_file)
+                VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(self.id as i64)
+            .bind(snapshot.generation as i64)
+            .bind(snapshot.parent.map(|i| i as i64))
+            .bind(snapshot.creation as i64)
+            .bind(snapshot.size as i64)
+            .bind(file)
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
 }

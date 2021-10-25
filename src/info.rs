@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
 use sqlx::{query, Row, SqlitePool};
 use std::io::Cursor;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::ffi::OsString;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 
@@ -14,6 +15,23 @@ pub struct SnapshotHeader {
     pub generation: u64,
     pub parent: Option<u64>,
     pub creation: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SnapshotInfo {
+    pub generation: u64,
+    pub parent: Option<u64>,
+    pub creation: u64,
+    pub size: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Snapshot {
+    generation: u64,
+    parent: Option<u64>,
+    size: u64,
+    time: u64,
+    file: PathBuf,
 }
 
 impl SnapshotHeader {
@@ -50,25 +68,19 @@ impl SnapshotHeader {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SnapshotInfo {
-    pub generation: u64,
-    pub parent: Option<u64>,
-    pub creation: u64,
-    pub size: u64,
-}
-
-impl SnapshotInfo {
+impl Snapshot {
     pub fn from_row(row: &SqliteRow) -> Result<Self> {
         let generation: i64 = row.try_get("snapshot_generation")?;
         let parent: Option<i64> = row.try_get("snapshot_parent")?;
         let size: i64 = row.try_get("snapshot_size")?;
         let creation: i64 = row.try_get("snapshot_time")?;
-        Ok(SnapshotInfo {
+        let file: String = row.try_get("snapshot_file")?;
+        Ok(Snapshot {
             generation: generation.try_into()?,
             parent: parent.map(|parent| parent as u64),
-            creation: creation.try_into()?,
+            time: creation.try_into()?,
             size: size.try_into()?,
+            file: PathBuf::from(&file),
         })
     }
 
@@ -118,28 +130,16 @@ impl SnapshotInfo {
         Ok(false)
     }
 
-    pub fn path(&self, volume: &Pubkey) -> PathBuf {
-        let mut path = PathBuf::new();
-        path.push(volume.to_hex());
-        if let Some(parent) = self.parent {
-            path.push(format!("{}-{}.snap", self.generation, parent));
-        } else {
-            path.push(format!("{}.snap", self.generation));
-        }
-        path
+    pub fn path(&self, volume: &Pubkey) -> &Path {
+        &self.file
     }
 
-    pub async fn register(&self, pool: &SqlitePool, volume: &Pubkey) -> Result<()> {
-        query(
-            "INSERT INTO storage_snapshot(volume_id, snapshot_generation, snapshot_parent, snapshot_time, snapshot_size)
-                VALUES ((SELECT volume_id FROM storage_volume WHERE volume_pubkey = ?), ?, ?, ?, ?)")
-            .bind(volume.as_slice())
-            .bind(self.generation as i64)
-            .bind(self.parent.map(|i| i as i64))
-            .bind(self.creation as i64)
-            .bind(self.size as i64)
-            .execute(pool)
-            .await?;
-        Ok(())
+    pub fn to_info(&self) -> SnapshotInfo {
+        SnapshotInfo {
+            generation: self.generation,
+            parent: self.parent,
+            creation: self.time,
+            size: self.size,
+        }
     }
 }

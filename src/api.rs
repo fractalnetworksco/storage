@@ -1,5 +1,5 @@
 use crate::db::Volume;
-use crate::info::{SnapshotHeader, SnapshotInfo, SNAPSHOT_HEADER_SIZE};
+use crate::info::{SnapshotHeader, SnapshotInfo, Snapshot, SNAPSHOT_HEADER_SIZE};
 use crate::keys::Pubkey;
 use crate::Options;
 use rocket::data::{ByteUnit, ToByteUnit};
@@ -34,7 +34,7 @@ async fn snapshot_upload(
 
     // TODO: check if snapshot exists
     if let Ok(Some(info)) =
-        SnapshotInfo::lookup(pool, volume.pubkey(), header.generation, header.parent).await
+        Snapshot::lookup(pool, volume.pubkey(), header.generation, header.parent).await
     {
         return Ok(());
     }
@@ -43,14 +43,15 @@ async fn snapshot_upload(
     let data = data.open(snapshot_size_max());
 
     // write data stream to file
-    let path = options.storage.join(header.path(volume.pubkey()));
+    let header_path = header.path(volume.pubkey());
+    let path = options.storage.join(header_path.clone());
     tokio::fs::create_dir(path.parent().unwrap()).await?;
     let mut file = File::create(&path).await.unwrap();
     data.stream_to(tokio::io::BufWriter::new(&mut file)).await?;
     // TODO: generate hash to check signature
 
-    let header = header.to_info(file.metadata().await?.len());
-    header.register(pool, volume.pubkey()).await.unwrap();
+    let info = header.to_info(file.metadata().await?.len());
+    volume.register(pool, &info, &header_path.to_str().unwrap()).await.unwrap();
     Ok(())
 }
 
@@ -60,7 +61,7 @@ async fn snapshot_latest(
     parent: Option<u64>,
     volume: Pubkey,
 ) -> Json<SnapshotInfo> {
-    let info = SnapshotInfo::latest(pool, &volume, parent).await.unwrap();
+    let info = Snapshot::latest(pool, &volume, parent).await.unwrap().to_info();
     Json(info)
 }
 
@@ -72,7 +73,7 @@ async fn snapshot_list(
     genmax: Option<u64>,
     volume: Pubkey,
 ) -> Json<Vec<SnapshotInfo>> {
-    let info = SnapshotInfo::latest(pool, &volume, parent).await.unwrap();
+    let info = Snapshot::latest(pool, &volume, parent).await.unwrap().to_info();
     Json(vec![info])
 }
 
@@ -92,6 +93,7 @@ pub fn routes() -> Vec<Route> {
         volume_create,
         snapshot_upload,
         snapshot_latest,
+        snapshot_list,
         snapshot_fetch
     ]
 }
