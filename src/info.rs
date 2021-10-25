@@ -4,9 +4,9 @@ use byteorder::{BigEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqliteRow;
 use sqlx::{query, Row, SqlitePool};
+use std::ffi::OsString;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
-use std::ffi::OsString;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 

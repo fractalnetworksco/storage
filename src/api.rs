@@ -1,5 +1,5 @@
 use crate::db::Volume;
-use crate::info::{SnapshotHeader, SnapshotInfo, Snapshot, SNAPSHOT_HEADER_SIZE};
+use crate::info::{Snapshot, SnapshotHeader, SnapshotInfo, SNAPSHOT_HEADER_SIZE};
 use crate::keys::Pubkey;
 use crate::Options;
 use rocket::data::{ByteUnit, ToByteUnit};
@@ -51,7 +51,10 @@ async fn snapshot_upload(
     // TODO: generate hash to check signature
 
     let info = header.to_info(file.metadata().await?.len());
-    volume.register(pool, &info, &header_path.to_str().unwrap()).await.unwrap();
+    volume
+        .register(pool, &info, &header_path.to_str().unwrap())
+        .await
+        .unwrap();
     Ok(())
 }
 
@@ -61,7 +64,10 @@ async fn snapshot_latest(
     parent: Option<u64>,
     volume: Pubkey,
 ) -> Json<SnapshotInfo> {
-    let info = Snapshot::latest(pool, &volume, parent).await.unwrap().to_info();
+    let info = Snapshot::latest(pool, &volume, parent)
+        .await
+        .unwrap()
+        .to_info();
     Json(info)
 }
 
@@ -73,7 +79,10 @@ async fn snapshot_list(
     genmax: Option<u64>,
     volume: Pubkey,
 ) -> Json<Vec<SnapshotInfo>> {
-    let info = Snapshot::latest(pool, &volume, parent).await.unwrap().to_info();
+    let info = Snapshot::latest(pool, &volume, parent)
+        .await
+        .unwrap()
+        .to_info();
     Json(vec![info])
 }
 
