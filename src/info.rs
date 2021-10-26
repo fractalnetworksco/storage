@@ -1,3 +1,4 @@
+use crate::db::Volume;
 use crate::keys::Pubkey;
 use anyhow::Result;
 use byteorder::{BigEndian, ReadBytesExt};
@@ -7,7 +8,6 @@ use sqlx::{query, Row, SqlitePool};
 use std::ffi::OsString;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
-use crate::db::Volume;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 
@@ -139,7 +139,8 @@ impl Snapshot {
                 WHERE volume_id = $1
                 AND ($2 IS NULL OR snapshot_parent = $2)
                 AND ($3 IS NULL OR snapshot_generation >= $3)
-                AND ($4 IS NULL OR snapshot_generation <= $4)")
+                AND ($4 IS NULL OR snapshot_generation <= $4)",
+        )
         .bind(volume.id() as i64)
         .bind(parent.map(|parent| parent as i64))
         .bind(genmin.map(|parent| parent as i64))
