@@ -85,7 +85,11 @@ impl Snapshot {
         })
     }
 
-    pub async fn latest(pool: &SqlitePool, volume: &Pubkey, parent: Option<u64>) -> Result<Option<Self>> {
+    pub async fn latest(
+        pool: &SqlitePool,
+        volume: &Pubkey,
+        parent: Option<u64>,
+    ) -> Result<Option<Self>> {
         let row = query(
             "SELECT * FROM storage_snapshot
                 JOIN storage_volume
@@ -99,7 +103,7 @@ impl Snapshot {
         .await?;
         match row {
             Some(row) => Ok(Some(Self::from_row(&row)?)),
-            None => Ok(None)
+            None => Ok(None),
         }
     }
 
