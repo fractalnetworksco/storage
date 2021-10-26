@@ -87,17 +87,15 @@ impl Snapshot {
 
     pub async fn latest(
         pool: &SqlitePool,
-        volume: &Pubkey,
+        volume: &Volume,
         parent: Option<u64>,
     ) -> Result<Option<Self>> {
         let row = query(
             "SELECT * FROM storage_snapshot
-                JOIN storage_volume
-                    ON storage_volume.volume_id = storage_snapshot.volume_id
-                WHERE volume_pubkey = ?
+                WHERE volume_id = ?
                     AND snapshot_parent IS ?",
         )
-        .bind(volume.as_slice())
+        .bind(volume.id() as i64)
         .bind(parent.map(|parent| parent as i64))
         .fetch_optional(pool)
         .await?;

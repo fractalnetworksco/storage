@@ -32,7 +32,6 @@ async fn snapshot_upload(
     // parse header from snapshot data
     let header = data.peek(SNAPSHOT_HEADER_SIZE).await;
     let header = SnapshotHeader::from_bytes(header).unwrap();
-    info!("header is: {:#?}", header);
 
     // TODO: check if snapshot exists
     if let Ok(Some(info)) =
@@ -46,7 +45,6 @@ async fn snapshot_upload(
 
     // write data stream to file
     let header_path = header.path(volume.pubkey());
-    println!("FILE PATH {:?}", header_path.display());
     let path = options.storage.join(header_path.clone());
     tokio::fs::create_dir_all(path.parent().unwrap()).await?;
     let mut file = File::create(&path).await.unwrap();
@@ -67,6 +65,7 @@ async fn snapshot_latest(
     parent: Option<u64>,
     volume: Pubkey,
 ) -> Json<Option<SnapshotInfo>> {
+    let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
     let latest = Snapshot::latest(pool, &volume, parent).await.unwrap();
     Json(latest.map(|inner| inner.to_info()))
 }
