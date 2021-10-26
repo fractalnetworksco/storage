@@ -66,12 +66,9 @@ async fn snapshot_latest(
     pool: &State<SqlitePool>,
     parent: Option<u64>,
     volume: Pubkey,
-) -> Json<SnapshotInfo> {
-    let info = Snapshot::latest(pool, &volume, parent)
-        .await
-        .unwrap()
-        .to_info();
-    Json(info)
+) -> Json<Option<SnapshotInfo>> {
+    let latest = Snapshot::latest(pool, &volume, parent).await.unwrap();
+    Json(latest.map(|inner| inner.to_info()))
 }
 
 #[get("/snapshot/<volume>/list?<parent>&<genmin>&<genmax>")]

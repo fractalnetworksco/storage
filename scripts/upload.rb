@@ -70,7 +70,7 @@ def list(http, privkey, genmin = nil, genmax = nil, parent = nil)
 end
 
 http = Net::HTTP.new("localhost", 8002)
-puts latest(http, privkey)
+puts latest(http, privkey).body
 puts create(http, privkey)
 #puts latest(http, privkey).body
 puts upload(http, privkey, "Somerandomdata", 1234, 0, Time.now.to_i)

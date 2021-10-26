@@ -85,7 +85,7 @@ impl Snapshot {
         })
     }
 
-    pub async fn latest(pool: &SqlitePool, volume: &Pubkey, parent: Option<u64>) -> Result<Self> {
+    pub async fn latest(pool: &SqlitePool, volume: &Pubkey, parent: Option<u64>) -> Result<Option<Self>> {
         let row = query(
             "SELECT * FROM storage_snapshot
                 JOIN storage_volume
@@ -95,10 +95,12 @@ impl Snapshot {
         )
         .bind(volume.as_slice())
         .bind(parent.map(|parent| parent as i64))
-        .fetch_one(pool)
-        .await
-        .unwrap();
-        Ok(Self::from_row(&row).unwrap())
+        .fetch_optional(pool)
+        .await?;
+        match row {
+            Some(row) => Ok(Some(Self::from_row(&row)?)),
+            None => Ok(None)
+        }
     }
 
     pub async fn lookup(
