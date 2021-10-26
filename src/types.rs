@@ -7,4 +7,3 @@ pub struct SnapshotInfo {
     pub creation: u64,
     pub size: u64,
 }
-

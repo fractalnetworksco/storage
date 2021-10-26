@@ -2,11 +2,11 @@ pub mod ed25519;
 mod types;
 
 pub use crate::types::*;
-use reqwest::Client;
-use url::Url;
 use async_trait::async_trait;
-use reqwest::Error;
 use ed25519::*;
+use reqwest::Client;
+use reqwest::Error;
+use url::Url;
 
 #[async_trait]
 pub trait Storage {
