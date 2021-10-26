@@ -48,7 +48,29 @@ def fetch(http, privkey, generation, parent = nil)
   end
 end
 
+def list(http, privkey, genmin = nil, genmax = nil, parent = nil)
+  pubkey = privkey.verify_key
+  pubkey_hex = pubkey.to_bytes.unpack("H*").first
+  url = "/snapshot/#{pubkey_hex}/list"
+  query = []
+  if genmin
+    query << "genmin=#{genmin}"
+  end
+  if genmax
+    query << "genmax=#{genmax}"
+  end
+  if parent
+    query << "parent=#{parent}"
+  end
+  query = query.join("&")
+  if query.length > 0
+    url += "?" + query
+  end
+  http.request_get(url)
+end
+
 http = Net::HTTP.new("localhost", 8002)
+puts latest(http, privkey)
 puts create(http, privkey)
 #puts latest(http, privkey).body
 puts upload(http, privkey, "Somerandomdata", 1234, 0, Time.now.to_i)
@@ -58,4 +80,5 @@ puts latest(http, privkey).body
 puts latest(http, privkey, 1234).body
 puts fetch(http, privkey, 1234).body[24..-65]
 puts fetch(http, privkey, 1235, 1234).body[24..-65]
+puts list(http, privkey).body
 

@@ -51,6 +51,10 @@ impl Volume {
         &self.pubkey
     }
 
+    pub fn id(&self) -> u64 {
+        self.id
+    }
+
     pub async fn register(
         &self,
         pool: &SqlitePool,

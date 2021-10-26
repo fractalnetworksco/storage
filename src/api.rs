@@ -82,11 +82,14 @@ async fn snapshot_list(
     genmax: Option<u64>,
     volume: Pubkey,
 ) -> Json<Vec<SnapshotInfo>> {
-    let info = Snapshot::latest(pool, &volume, parent)
+    let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
+    let info = Snapshot::list(pool, &volume, parent, genmin, genmax)
         .await
         .unwrap()
-        .to_info();
-    Json(vec![info])
+        .into_iter()
+        .map(|row| row.to_info())
+        .collect();
+    Json(info)
 }
 
 #[get("/snapshot/<volume>/fetch?<generation>&<parent>")]
