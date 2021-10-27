@@ -1,5 +1,9 @@
 image: rustlang/rust:nightly
 
+# make sure CI pulls submodules
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
 # set up cache to speed up builds
 cache:
   key: $CI_COMMIT_REF_SLUG
