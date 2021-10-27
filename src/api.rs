@@ -27,7 +27,7 @@ async fn snapshot_upload(
     pool: &State<SqlitePool>,
     options: &State<Options>,
     volume_pubkey: Pubkey,
-) -> std::io::Result<SnapshotInfo> {
+) -> std::io::Result<Json<SnapshotInfo>> {
     let volume = Volume::lookup(pool, &volume_pubkey).await.unwrap().unwrap();
 
     // parse header from snapshot data
@@ -38,7 +38,8 @@ async fn snapshot_upload(
     if let Ok(Some(info)) =
         Snapshot::lookup(pool, volume.pubkey(), header.generation, header.parent).await
     {
-        return Ok(());
+        // TODO: make this return an error
+        return Ok(Json(info.to_info()));
     }
 
     // open the entire data stream
@@ -57,7 +58,7 @@ async fn snapshot_upload(
         .register(pool, &info, &header_path.to_str().unwrap())
         .await
         .unwrap();
-    Ok(info)
+    Ok(Json(info))
 }
 
 #[get("/snapshot/<volume>/latest?<parent>")]
