@@ -6,9 +6,9 @@ use async_trait::async_trait;
 use ed25519::*;
 use reqwest::Client;
 use reqwest::Error;
-use url::Url;
-use tokio::io::AsyncRead;
 use std::pin::Pin;
+use tokio::io::AsyncRead;
+use url::Url;
 
 #[async_trait]
 pub trait Storage {
