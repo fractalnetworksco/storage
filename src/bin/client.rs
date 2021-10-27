@@ -1,9 +1,13 @@
 use anyhow::Result;
 use reqwest::Client;
 use std::path::PathBuf;
-use storage_api::{ed25519::*, Storage};
+use storage_api::{ed25519::*, Storage, SnapshotHeader};
 use structopt::StructOpt;
 use url::Url;
+use tokio::io::stdin;
+use tokio::fs::File;
+use std::pin::Pin;
+use tokio::io::AsyncRead;
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Options {
@@ -113,7 +117,26 @@ impl Options {
                 println!("{:#?}", result);
                 Ok(())
             }
-            Command::Upload(opts) => Ok(()),
+            Command::Upload(opts) => {
+                let header = SnapshotHeader {
+                    parent: opts.parent,
+                    generation: opts.generation,
+                    creation: opts.creation,
+                };
+
+                let input: Pin<Box<dyn AsyncRead + Send>> = match &opts.file {
+                    Some(file) => Box::pin(File::open(file).await?),
+                    None => Box::pin(stdin())
+                };
+
+                let result = self
+                    .server
+                    .upload(&client, &opts.privkey, &header, input)
+                    .await?;
+
+                println!("{:#?}", result);
+                Ok(())
+            }
         }
     }
 }

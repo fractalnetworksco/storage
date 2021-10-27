@@ -7,6 +7,8 @@ use ed25519::*;
 use reqwest::Client;
 use reqwest::Error;
 use url::Url;
+use tokio::io::AsyncRead;
+use std::pin::Pin;
 
 #[async_trait]
 pub trait Storage {
@@ -39,6 +41,7 @@ pub trait Storage {
         client: &Client,
         volume: &Privkey,
         header: &SnapshotHeader,
+        data: Pin<Box<dyn AsyncRead + Send>>,
     ) -> Result<SnapshotInfo, Error>;
 }
 
@@ -99,6 +102,7 @@ impl Storage for Url {
         client: &Client,
         volume: &Privkey,
         header: &SnapshotHeader,
+        data: Pin<Box<dyn AsyncRead + Send>>,
     ) -> Result<SnapshotInfo, Error> {
         unimplemented!()
     }
