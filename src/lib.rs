@@ -4,10 +4,10 @@ mod types;
 pub use crate::types::*;
 use async_trait::async_trait;
 use ed25519::*;
-use reqwest::Client;
-use reqwest::Error;
+use reqwest::{Body, Client, Error};
 use std::pin::Pin;
 use tokio::io::AsyncRead;
+use tokio_util::io::ReaderStream;
 use url::Url;
 
 #[async_trait]
@@ -41,8 +41,8 @@ pub trait Storage {
         client: &Client,
         volume: &Privkey,
         header: &SnapshotHeader,
-        data: Pin<Box<dyn AsyncRead + Send>>,
-    ) -> Result<SnapshotInfo, Error>;
+        data: Pin<Box<dyn AsyncRead + Send + Sync>>,
+    ) -> Result<Option<SnapshotInfo>, Error>;
 }
 
 #[async_trait]
@@ -93,7 +93,7 @@ impl Storage for Url {
         let url = self
             .join(&format!("/snapshot/{}/create", &volume.pubkey().to_hex()))
             .unwrap();
-        let response = client.post(url).send().await.unwrap();
+        let response = client.post(url).send().await?;
         Ok(response.status().is_success())
     }
 
@@ -102,9 +102,21 @@ impl Storage for Url {
         client: &Client,
         volume: &Privkey,
         header: &SnapshotHeader,
-        data: Pin<Box<dyn AsyncRead + Send>>,
-    ) -> Result<SnapshotInfo, Error> {
-        unimplemented!()
+        data: Pin<Box<dyn AsyncRead + Send + Sync>>,
+    ) -> Result<Option<SnapshotInfo>, Error> {
+        let url = self
+            .join(&format!("/snapshot/{}/upload", &volume.pubkey().to_hex()))
+            .unwrap();
+        let response = client
+            .post(url)
+            .body(Body::wrap_stream(ReaderStream::new(data)))
+            .send()
+            .await?;
+        if response.status().is_success() {
+            Ok(Some(response.json::<SnapshotInfo>().await?))
+        } else {
+            Ok(None)
+        }
     }
 }
 

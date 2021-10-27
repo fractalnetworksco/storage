@@ -124,7 +124,7 @@ impl Options {
                     creation: opts.creation,
                 };
 
-                let input: Pin<Box<dyn AsyncRead + Send>> = match &opts.file {
+                let input: Pin<Box<dyn AsyncRead + Send + Sync>> = match &opts.file {
                     Some(file) => Box::pin(File::open(file).await?),
                     None => Box::pin(stdin()),
                 };
