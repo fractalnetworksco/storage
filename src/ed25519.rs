@@ -52,6 +52,10 @@ impl std::fmt::Display for Pubkey {
     }
 }
 
+/// This SignedStream wraps around an existing Stream of Bytes, passing through
+/// all of the data, but with the twist that if no error has occured while
+/// streaming the data, it will append a valid Ed25519 Signature of the entire
+/// data stream generated with the private key that it posesses.
 pub struct SignedStream {
     privkey: Privkey,
     hasher: Sha512,
@@ -60,6 +64,8 @@ pub struct SignedStream {
 }
 
 impl SignedStream {
+    /// Create a new SignedStream instance, giving it a private key (this will
+    /// be copied and stored) and a pinned, boxed Stream instance.
     pub fn new(
         privkey: &Privkey,
         stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
