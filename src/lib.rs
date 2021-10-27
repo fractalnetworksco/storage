@@ -16,6 +16,14 @@ pub trait Storage {
         volume: &Pubkey,
         parent: Option<u64>,
     ) -> Result<Option<SnapshotInfo>, Error>;
+    async fn list(
+        &self,
+        client: &Client,
+        volume: &Pubkey,
+        parent: Option<u64>,
+        genmin: Option<u64>,
+        genmax: Option<u64>,
+    ) -> Result<Vec<SnapshotInfo>, Error>;
     async fn create(&self, client: &Client, volume: &Privkey) -> Result<bool, Error>;
 }
 
@@ -30,8 +38,45 @@ impl Storage for Url {
         let url = self
             .join(&format!("/snapshot/{}/latest", &volume.to_hex()))
             .unwrap();
-        let response = client.get(url).send().await?;
+        let mut query = vec![];
+        if let Some(parent) = parent {
+            query.push(("parent", parent.to_string()));
+        }
+        let response = client
+            .get(url)
+            .query(&query)
+            .send()
+            .await?;
         Ok(response.json::<Option<SnapshotInfo>>().await?)
+    }
+
+    async fn list(
+        &self,
+        client: &Client,
+        volume: &Pubkey,
+        parent: Option<u64>,
+        genmin: Option<u64>,
+        genmax: Option<u64>,
+    ) -> Result<Vec<SnapshotInfo>, Error> {
+        let url = self
+            .join(&format!("/snapshot/{}/list", &volume.to_hex()))
+            .unwrap();
+        let mut query = vec![];
+        if let Some(parent) = parent {
+            query.push(("parent", parent.to_string()));
+        }
+        if let Some(genmin) = genmin {
+            query.push(("genmin", genmin.to_string()));
+        }
+        if let Some(genmax) = genmax {
+            query.push(("genmax", genmax.to_string()));
+        }
+        let response = client
+            .get(url)
+            .query(&query)
+            .send()
+            .await?;
+        Ok(response.json::<Vec<SnapshotInfo>>().await?)
     }
 
     async fn create(&self, client: &Client, volume: &Privkey) -> Result<bool, Error> {
