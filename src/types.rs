@@ -1,4 +1,4 @@
-use byteorder::{BigEndian, ReadBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 
@@ -28,6 +28,14 @@ impl SnapshotHeader {
             },
             creation: reader.read_u64::<BigEndian>()?,
         })
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut data = vec![];
+        data.write_u64::<BigEndian>(self.generation).unwrap();
+        data.write_u64::<BigEndian>(self.parent.unwrap_or(0)).unwrap();
+        data.write_u64::<BigEndian>(self.creation).unwrap();
+        data
     }
 
     pub fn to_info(&self, size: u64) -> SnapshotInfo {
