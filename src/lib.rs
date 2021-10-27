@@ -42,11 +42,7 @@ impl Storage for Url {
         if let Some(parent) = parent {
             query.push(("parent", parent.to_string()));
         }
-        let response = client
-            .get(url)
-            .query(&query)
-            .send()
-            .await?;
+        let response = client.get(url).query(&query).send().await?;
         Ok(response.json::<Option<SnapshotInfo>>().await?)
     }
 
@@ -71,11 +67,7 @@ impl Storage for Url {
         if let Some(genmax) = genmax {
             query.push(("genmax", genmax.to_string()));
         }
-        let response = client
-            .get(url)
-            .query(&query)
-            .send()
-            .await?;
+        let response = client.get(url).query(&query).send().await?;
         Ok(response.json::<Vec<SnapshotInfo>>().await?)
     }
 

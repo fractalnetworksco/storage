@@ -1,8 +1,8 @@
+use anyhow::Result;
+use reqwest::Client;
+use storage_api::{ed25519::*, Storage};
 use structopt::StructOpt;
 use url::Url;
-use anyhow::Result;
-use storage_api::{ed25519::*, Storage};
-use reqwest::Client;
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Options {
@@ -62,22 +62,24 @@ impl Options {
                 Ok(())
             }
             Command::List(opts) => {
-                let result = self.server.list(
-                    &client,
-                    &opts.privkey.pubkey(),
-                    opts.parent,
-                    opts.genmin,
-                    opts.genmax,
-                ).await?;
+                let result = self
+                    .server
+                    .list(
+                        &client,
+                        &opts.privkey.pubkey(),
+                        opts.parent,
+                        opts.genmin,
+                        opts.genmax,
+                    )
+                    .await?;
                 println!("{:#?}", result);
                 Ok(())
             }
             Command::Latest(opts) => {
-                let result = self.server.latest(
-                    &client,
-                    &opts.privkey.pubkey(),
-                    opts.parent,
-                ).await?;
+                let result = self
+                    .server
+                    .latest(&client, &opts.privkey.pubkey(), opts.parent)
+                    .await?;
                 println!("{:#?}", result);
                 Ok(())
             }
@@ -89,7 +91,7 @@ impl Options {
 async fn main() {
     let options = Options::from_args();
     match options.run().await {
-        Ok(_) => {},
-        Err(e) => println!("{}", e.to_string())
+        Ok(_) => {}
+        Err(e) => println!("{}", e.to_string()),
     }
 }
