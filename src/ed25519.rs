@@ -1,11 +1,11 @@
-use ed25519_dalek::{PublicKey, SecretKey, ExpandedSecretKey, Sha512, Digest};
-use rand_core::OsRng;
-use std::str::FromStr;
+use bytes::Bytes;
+use ed25519_dalek::{Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512};
 use futures::stream::Stream;
 use futures::task::Context;
-use std::pin::Pin;
 use futures::task::Poll;
-use bytes::Bytes;
+use rand_core::OsRng;
+use std::pin::Pin;
+use std::str::FromStr;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Privkey([u8; 32]);
@@ -60,7 +60,10 @@ pub struct SignedStream {
 }
 
 impl SignedStream {
-    pub fn new(privkey: &Privkey, stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>) -> Self {
+    pub fn new(
+        privkey: &Privkey,
+        stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
+    ) -> Self {
         SignedStream {
             hasher: Sha512::new(),
             eof: false,
@@ -73,10 +76,7 @@ impl SignedStream {
 impl Stream for SignedStream {
     type Item = Result<Bytes, std::io::Error>;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if self.eof {
             return Poll::Ready(None);
         }
@@ -85,7 +85,7 @@ impl Stream for SignedStream {
         match &result {
             Poll::Ready(Some(Ok(bytes))) => {
                 self.hasher.update(bytes);
-            },
+            }
             Poll::Ready(Some(Err(error))) => self.eof = true,
             Poll::Ready(None) => {
                 self.eof = true;
@@ -94,7 +94,9 @@ impl Stream for SignedStream {
                 let secret_key: ExpandedSecretKey = (&secret_key).into();
                 let result = secret_key.sign_prehashed(self.hasher.clone(), &public_key, None);
                 match result {
-                    Ok(signature) => return Poll::Ready(Some(Ok(Bytes::from(signature.to_bytes().to_vec())))),
+                    Ok(signature) => {
+                        return Poll::Ready(Some(Ok(Bytes::from(signature.to_bytes().to_vec()))))
+                    }
                     Err(error) => unimplemented!(),
                 }
             }
