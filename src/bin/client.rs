@@ -1,5 +1,6 @@
 use anyhow::Result;
 use reqwest::Client;
+use std::path::PathBuf;
 use storage_api::{ed25519::*, Storage};
 use structopt::StructOpt;
 use url::Url;
@@ -43,6 +44,34 @@ pub struct LatestCommand {
     privkey: Privkey,
     #[structopt(long, short)]
     parent: Option<u64>,
+}
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct UploadCommand {
+    #[structopt(long, short)]
+    privkey: Privkey,
+    #[structopt(long, short)]
+    generation: u64,
+    #[structopt(long, short)]
+    parent: Option<u64>,
+    #[structopt(long, short)]
+    creation: u64,
+
+    /// File to upload, if none specified, read from standard input.
+    file: Option<PathBuf>,
+}
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct FetchCommand {
+    #[structopt(long, short)]
+    privkey: Privkey,
+    #[structopt(long, short)]
+    generation: u64,
+    #[structopt(long, short)]
+    parent: Option<u64>,
+
+    /// File to save to, if none specified, piped to standard output.
+    file: Option<PathBuf>,
 }
 
 impl Options {
