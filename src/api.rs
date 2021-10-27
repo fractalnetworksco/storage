@@ -27,7 +27,7 @@ async fn snapshot_upload(
     pool: &State<SqlitePool>,
     options: &State<Options>,
     volume_pubkey: Pubkey,
-) -> std::io::Result<()> {
+) -> std::io::Result<SnapshotInfo> {
     let volume = Volume::lookup(pool, &volume_pubkey).await.unwrap().unwrap();
 
     // parse header from snapshot data
@@ -57,7 +57,7 @@ async fn snapshot_upload(
         .register(pool, &info, &header_path.to_str().unwrap())
         .await
         .unwrap();
-    Ok(())
+    Ok(info)
 }
 
 #[get("/snapshot/<volume>/latest?<parent>")]
