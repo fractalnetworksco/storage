@@ -113,9 +113,7 @@ impl Options {
                 println!("{:#?}", result);
                 Ok(())
             }
-            Command::Upload(opts) => {
-                Ok(())
-            }
+            Command::Upload(opts) => Ok(()),
         }
     }
 }

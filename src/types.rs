@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use byteorder::{BigEndian, ReadBytesExt};
+use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

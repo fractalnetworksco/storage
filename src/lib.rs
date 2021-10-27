@@ -94,7 +94,12 @@ impl Storage for Url {
         Ok(response.status().is_success())
     }
 
-    async fn upload(&self, client: &Client, volume: &Privkey, header: &SnapshotHeader) -> Result<SnapshotInfo, Error> {
+    async fn upload(
+        &self,
+        client: &Client,
+        volume: &Privkey,
+        header: &SnapshotHeader,
+    ) -> Result<SnapshotInfo, Error> {
         unimplemented!()
     }
 }
