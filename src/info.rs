@@ -8,6 +8,7 @@ use sqlx::{query, Row, SqlitePool};
 use std::ffi::OsString;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
+use storage_api::SnapshotInfo;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 
@@ -16,14 +17,6 @@ pub struct SnapshotHeader {
     pub generation: u64,
     pub parent: Option<u64>,
     pub creation: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SnapshotInfo {
-    pub generation: u64,
-    pub parent: Option<u64>,
-    pub creation: u64,
-    pub size: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

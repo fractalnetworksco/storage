@@ -1,9 +1,10 @@
-use crate::info::{Snapshot, SnapshotInfo};
+use crate::info::Snapshot;
 use crate::keys::Pubkey;
 use anyhow::Result;
 use sqlx::sqlite::SqliteRow;
 use sqlx::{query, Row, SqlitePool};
 use std::path::Path;
+use storage_api::SnapshotInfo;
 
 #[derive(Clone, Debug)]
 pub struct Volume {

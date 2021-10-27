@@ -1,5 +1,5 @@
 use crate::db::Volume;
-use crate::info::{Snapshot, SnapshotHeader, SnapshotInfo, SNAPSHOT_HEADER_SIZE};
+use crate::info::{Snapshot, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
 use crate::keys::Pubkey;
 use crate::Options;
 use rocket::data::{ByteUnit, ToByteUnit};
@@ -8,6 +8,7 @@ use rocket::response::stream::ReaderStream;
 use rocket::serde::json::Json;
 use rocket::*;
 use sqlx::{query, SqlitePool};
+use storage_api::SnapshotInfo;
 use tokio::fs::File;
 
 pub fn snapshot_size_max() -> ByteUnit {
