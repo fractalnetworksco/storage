@@ -40,3 +40,9 @@ impl std::fmt::Display for Privkey {
         write!(f, "{}", base64::encode(&self.0))
     }
 }
+
+impl std::fmt::Display for Pubkey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", base64::encode(&self.0))
+    }
+}
