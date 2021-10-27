@@ -18,6 +18,7 @@ pub enum Command {
     Create(CreateCommand),
     Latest(LatestCommand),
     List(ListCommand),
+    Upload(UploadCommand),
 }
 
 #[derive(StructOpt, Debug, Clone)]
@@ -110,6 +111,9 @@ impl Options {
                     .latest(&client, &opts.privkey.pubkey(), opts.parent)
                     .await?;
                 println!("{:#?}", result);
+                Ok(())
+            }
+            Command::Upload(opts) => {
                 Ok(())
             }
         }
