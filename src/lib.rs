@@ -8,8 +8,8 @@ use ed25519::*;
 use reqwest::{Body, Client, Error};
 use std::pin::Pin;
 use tokio::io::AsyncRead;
-use tokio_util::io::ReaderStream;
 use tokio_stream::StreamExt;
+use tokio_util::io::ReaderStream;
 use url::Url;
 
 #[async_trait]

@@ -33,7 +33,8 @@ impl SnapshotHeader {
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut data = vec![];
         data.write_u64::<BigEndian>(self.generation).unwrap();
-        data.write_u64::<BigEndian>(self.parent.unwrap_or(0)).unwrap();
+        data.write_u64::<BigEndian>(self.parent.unwrap_or(0))
+            .unwrap();
         data.write_u64::<BigEndian>(self.creation).unwrap();
         data
     }
