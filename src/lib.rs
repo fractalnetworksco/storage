@@ -10,12 +10,17 @@ use url::Url;
 
 #[async_trait]
 pub trait Storage {
+    /// Fetch latest (as in, most current generation) based on the parent
+    /// generation that is passed.
     async fn latest(
         &self,
         client: &Client,
         volume: &Pubkey,
         parent: Option<u64>,
     ) -> Result<Option<SnapshotInfo>, Error>;
+
+    /// List snapshots, optionally restrict to ones with a given parent
+    /// or a range limit on the generation.
     async fn list(
         &self,
         client: &Client,
@@ -24,7 +29,17 @@ pub trait Storage {
         genmin: Option<u64>,
         genmax: Option<u64>,
     ) -> Result<Vec<SnapshotInfo>, Error>;
+
+    /// Create new snapshot repository, given a private key.
     async fn create(&self, client: &Client, volume: &Privkey) -> Result<bool, Error>;
+
+    /// Upload a new snapshot
+    async fn upload(
+        &self,
+        client: &Client,
+        volume: &Privkey,
+        header: &SnapshotHeader,
+    ) -> Result<SnapshotInfo, Error>;
 }
 
 #[async_trait]
@@ -77,6 +92,10 @@ impl Storage for Url {
             .unwrap();
         let response = client.post(url).send().await.unwrap();
         Ok(response.status().is_success())
+    }
+
+    async fn upload(&self, client: &Client, volume: &Privkey, header: &SnapshotHeader) -> Result<SnapshotInfo, Error> {
+        unimplemented!()
     }
 }
 
