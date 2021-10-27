@@ -45,6 +45,17 @@ pub trait Storage {
         header: &SnapshotHeader,
         data: Pin<Box<dyn AsyncRead + Send + Sync>>,
     ) -> Result<Option<SnapshotInfo>, Error>;
+
+    /// Fetch a snapshot from storage. This will decrypt and verify the
+    /// signature on the snapshot, to make sure that it is valid and
+    /// intact.
+    async fn fetch(
+        &self,
+        client: &Client,
+        volume: &Privkey,
+        generation: u64,
+        parent: Option<u64>,
+    ) -> Result<(), Error>;
 }
 
 #[async_trait]
@@ -122,6 +133,28 @@ impl Storage for Url {
             Ok(Some(response.json::<SnapshotInfo>().await?))
         } else {
             Ok(None)
+        }
+    }
+
+    async fn fetch(
+        &self,
+        client: &Client,
+        volume: &Privkey,
+        generation: u64,
+        parent: Option<u64>,
+    ) -> Result<(), Error> {
+        let url = self
+            .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
+            .unwrap();
+        let mut query = vec![("generation", generation.to_string())];
+        if let Some(parent) = parent {
+            query.push(("parent", parent.to_string()));
+        }
+        let response = client.post(url).query(&query).send().await?;
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Ok(())
         }
     }
 }

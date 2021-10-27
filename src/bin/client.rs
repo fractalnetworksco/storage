@@ -144,6 +144,10 @@ impl Options {
                 Ok(())
             }
             Command::Fetch(opts) => {
+                let result = self
+                    .server
+                    .fetch(&client, &opts.privkey, opts.generation, opts.parent)
+                    .await?;
                 Ok(())
             }
         }
