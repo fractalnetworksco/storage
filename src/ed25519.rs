@@ -1,6 +1,11 @@
-use ed25519_dalek::{PublicKey, SecretKey};
+use ed25519_dalek::{PublicKey, SecretKey, ExpandedSecretKey, Sha512, Digest};
 use rand_core::OsRng;
 use std::str::FromStr;
+use futures::stream::Stream;
+use futures::task::Context;
+use std::pin::Pin;
+use futures::task::Poll;
+use bytes::Bytes;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Privkey([u8; 32]);
@@ -45,4 +50,61 @@ impl std::fmt::Display for Pubkey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", base64::encode(&self.0))
     }
+}
+
+pub struct SignedStream {
+    privkey: Privkey,
+    hasher: Sha512,
+    stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
+    eof: bool,
+}
+
+impl SignedStream {
+    pub fn new(privkey: &Privkey, stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>) -> Self {
+        SignedStream {
+            hasher: Sha512::new(),
+            eof: false,
+            privkey: privkey.clone(),
+            stream,
+        }
+    }
+}
+
+impl Stream for SignedStream {
+    type Item = Result<Bytes, std::io::Error>;
+
+    fn poll_next(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>
+    ) -> Poll<Option<Self::Item>> {
+        if self.eof {
+            return Poll::Ready(None);
+        }
+
+        let result = Pin::new(&mut self.stream).poll_next(cx);
+        match &result {
+            Poll::Ready(Some(Ok(bytes))) => {
+                self.hasher.update(bytes);
+            },
+            Poll::Ready(Some(Err(error))) => self.eof = true,
+            Poll::Ready(None) => {
+                self.eof = true;
+                let secret_key = SecretKey::from_bytes(&self.privkey.0).unwrap();
+                let public_key: PublicKey = (&secret_key).into();
+                let secret_key: ExpandedSecretKey = (&secret_key).into();
+                let result = secret_key.sign_prehashed(self.hasher.clone(), &public_key, None);
+                match result {
+                    Ok(signature) => return Poll::Ready(Some(Ok(Bytes::from(signature.to_bytes().to_vec())))),
+                    Err(error) => unimplemented!(),
+                }
+            }
+            _ => {}
+        }
+
+        result
+    }
+}
+
+struct VerifyStream {
+    pubkey: Pubkey,
 }
