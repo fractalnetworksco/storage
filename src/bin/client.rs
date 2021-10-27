@@ -19,10 +19,16 @@ pub struct Options {
 
 #[derive(StructOpt, Debug, Clone)]
 pub enum Command {
+    /// Create a new volume (and private key).
     Create(CreateCommand),
+    /// Return the latest snapshot available from a given parent.
     Latest(LatestCommand),
+    /// List all snapshots that exist.
     List(ListCommand),
+    /// Upload a new snapshot.
     Upload(UploadCommand),
+    /// Fetch a snapshot.
+    Fetch(FetchCommand),
 }
 
 #[derive(StructOpt, Debug, Clone)]
@@ -135,6 +141,9 @@ impl Options {
                     .await?;
 
                 println!("{:#?}", result);
+                Ok(())
+            }
+            Command::Fetch(opts) => {
                 Ok(())
             }
         }
