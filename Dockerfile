@@ -10,7 +10,7 @@ ENV RUST_LOG=info,sqlx=warn
 ENV RUST_BACKTRACE=1
 
 COPY /target/release/storage /usr/local/bin/storage
-RUN echo "#!/bin/bash\nmkdir -p $STORAGE_PATH\ntouch $STORAGE_DATABASE\ngateway-manager --database \$STORAGE_DATABASE --storage $STORAGE_PATH" > /bin/start.sh
+RUN echo "#!/bin/bash\nmkdir -p $STORAGE_PATH\ntouch $STORAGE_DATABASE\nstorage --database \$STORAGE_DATABASE --storage $STORAGE_PATH" > /bin/start.sh
 RUN chmod +x /bin/start.sh
 
 ENTRYPOINT ["/bin/start.sh"]

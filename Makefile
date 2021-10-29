@@ -33,7 +33,7 @@ docker-push:
 
 docker-run:
 	-$(DOCKER) network create fractal
-	$(DOCKER) run --network fractal --name gateway -it --privileged --rm -p 8000:8000 -p 80:80 -p 443:443 gateway
+	$(DOCKER) run --network fractal --name gateway -it --privileged --rm -p 8000:8000 $(IMAGE_NAME):$(IMAGE_TAG)
 
 get-release-artifact:
 	./scripts/get-release-artifact.sh $(ARCH)
