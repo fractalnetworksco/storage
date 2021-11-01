@@ -1,12 +1,12 @@
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
-use std::io::Cursor;
 use crate::ed25519::VerifyStream;
-use reqwest::Error as ReqwestError;
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::{Bytes, BytesMut};
 use futures::stream::{Stream, StreamExt};
 use futures::task::Context;
 use futures::task::Poll;
+use reqwest::Error as ReqwestError;
+use serde::{Deserialize, Serialize};
+use std::io::Cursor;
 use std::pin::Pin;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
@@ -117,7 +117,7 @@ impl Stream for HeaderVerifyStream {
                 }
                 Poll::Ready(Some(Ok(Bytes::new())))
             }
-            result => result
+            result => result,
         }
     }
 }
