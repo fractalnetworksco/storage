@@ -1,6 +1,15 @@
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
+use crate::ed25519::VerifyStream;
+use reqwest::Error as ReqwestError;
+use bytes::{Bytes, BytesMut};
+use futures::stream::{Stream, StreamExt};
+use futures::task::Context;
+use futures::task::Poll;
+use std::pin::Pin;
+
+pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct SnapshotInfo {
@@ -45,6 +54,70 @@ impl SnapshotHeader {
             parent: self.parent,
             size: size,
             creation: self.creation,
+        }
+    }
+}
+
+pub struct HeaderVerifyStream {
+    stream: VerifyStream<ReqwestError>,
+    buffer: BytesMut,
+    queue: Option<Bytes>,
+}
+
+impl HeaderVerifyStream {
+    pub fn new(stream: VerifyStream<ReqwestError>) -> Self {
+        HeaderVerifyStream {
+            stream,
+            buffer: BytesMut::with_capacity(SNAPSHOT_HEADER_SIZE),
+            queue: None,
+        }
+    }
+
+    pub async fn header(&mut self) -> Result<SnapshotHeader, ReqwestError> {
+        // i know, this really sucks, but not sure how to do this cleaner right now.
+        if self.buffer.len() < SNAPSHOT_HEADER_SIZE {
+            panic!("Not enough data for header: {}", self.buffer.len())
+        }
+        Ok(SnapshotHeader::from_bytes(&self.buffer).unwrap())
+    }
+
+    pub fn verify(&self) -> Option<bool> {
+        self.stream.verify()
+    }
+}
+
+impl Stream for HeaderVerifyStream {
+    type Item = Result<Bytes, ReqwestError>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if let Some(bytes) = self.queue.clone() {
+            self.queue = None;
+            return Poll::Ready(Some(Ok(bytes)));
+        }
+
+        let result = Pin::new(&mut self.stream).poll_next(cx);
+
+        if self.buffer.len() >= SNAPSHOT_HEADER_SIZE {
+            return result;
+        }
+
+        match result {
+            Poll::Ready(Some(Ok(mut bytes))) => {
+                let total_bytes = self.buffer.len() + bytes.len();
+
+                // with the data we have buffered, is this enough to return some?
+                if total_bytes <= SNAPSHOT_HEADER_SIZE {
+                    self.buffer.extend_from_slice(&bytes);
+                } else {
+                    // split data into part we keep (part of the header) and the part
+                    // that we return (any excess).
+                    let data = bytes.split_off(SNAPSHOT_HEADER_SIZE - self.buffer.len());
+                    self.buffer.extend_from_slice(&bytes);
+                    self.queue = Some(bytes);
+                }
+                Poll::Ready(Some(Ok(Bytes::new())))
+            }
+            result => result
         }
     }
 }

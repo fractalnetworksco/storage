@@ -55,7 +55,7 @@ pub trait Storage {
         volume: &Privkey,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<(), Error>;
+    ) -> Result<HeaderVerifyStream, Error>;
 }
 
 #[async_trait]
@@ -142,7 +142,7 @@ impl Storage for Url {
         volume: &Privkey,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<(), Error> {
+    ) -> Result<HeaderVerifyStream, Error> {
         let url = self
             .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
             .unwrap();
@@ -152,16 +152,11 @@ impl Storage for Url {
         }
         let response = client.get(url).query(&query).send().await?;
         if response.status().is_success() {
-            let mut stream = VerifyStream::new(&volume.pubkey(), Box::pin(response.bytes_stream()));
-            loop {
-                if stream.next().await.is_none() {
-                    break;
-                }
-            }
-            println!("verification: {:?}", stream.verify());
-            Ok(())
+            let stream = VerifyStream::new(&volume.pubkey(), Box::pin(response.bytes_stream()));
+            let stream = HeaderVerifyStream::new(stream);
+            Ok(stream)
         } else {
-            Ok(())
+            unimplemented!()
         }
     }
 }

@@ -6,8 +6,9 @@ use storage_api::{ed25519::*, SnapshotHeader, Storage};
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
-use tokio::io::AsyncRead;
+use tokio::io::{AsyncWriteExt, AsyncRead};
 use url::Url;
+use futures::StreamExt;
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Options {
@@ -39,7 +40,7 @@ pub struct CreateCommand {
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct ListCommand {
-    #[structopt(long, short)]
+    #[structopt(long, short = "k")]
     privkey: Privkey,
     #[structopt(long, short)]
     parent: Option<u64>,
@@ -51,7 +52,7 @@ pub struct ListCommand {
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct LatestCommand {
-    #[structopt(long, short)]
+    #[structopt(long, short = "k")]
     privkey: Privkey,
     #[structopt(long, short)]
     parent: Option<u64>,
@@ -59,7 +60,7 @@ pub struct LatestCommand {
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct UploadCommand {
-    #[structopt(long, short)]
+    #[structopt(long, short = "k")]
     privkey: Privkey,
     #[structopt(long, short)]
     generation: u64,
@@ -74,7 +75,7 @@ pub struct UploadCommand {
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct FetchCommand {
-    #[structopt(long, short)]
+    #[structopt(long, short = "k")]
     privkey: Privkey,
     #[structopt(long, short)]
     generation: u64,
@@ -144,10 +145,27 @@ impl Options {
                 Ok(())
             }
             Command::Fetch(opts) => {
-                let result = self
+                let mut result = self
                     .server
                     .fetch(&client, &opts.privkey, opts.generation, opts.parent)
                     .await?;
+                let mut stdout = tokio::io::stdout();
+                // handle first data
+                while let Some(data) = result.next().await {
+                    let data = data?;
+                    stdout.write_all(&data).await?;
+                    if data.len() > 0 {
+                        break;
+                    }
+                }
+                let header = result.header().await?;
+                eprintln!("{:#?}", header);
+                // stream rest of data
+                while let Some(data) = result.next().await {
+                    let data = data?;
+                    stdout.write_all(&data).await?;
+                }
+                eprintln!("verify: {:?}", result.verify());
                 Ok(())
             }
         }
