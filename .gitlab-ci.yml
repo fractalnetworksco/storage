@@ -51,7 +51,7 @@ build:amd64:
     - cargo build --release
   artifacts:
     paths:
-      - target/release/storage-api
+      - target/release/storage
     expire_in: 1 week
 
 # build for arm target
@@ -66,7 +66,7 @@ build:arm:
     - cargo build --release --target arm-unknown-linux-gnueabihf
   artifacts:
     paths:
-      - target/arm-unknown-linux-gnueabihf/release/storage-api
+      - target/arm-unknown-linux-gnueabihf/release/storage
     expire_in: 1 week
 
 # generate rust html documentation
@@ -89,8 +89,8 @@ pages:
   script:
     - mkdir public
     - mv target/doc public/doc
-    - mv target/release/storage-api public/storage-api-master-amd64
-    - mv target/arm-unknown-linux-gnueabihf/release/storage-api public/storage-api-master-arm
+    - mv target/release/storage public/storage-master-amd64
+    - mv target/arm-unknown-linux-gnueabihf/release/storage public/storage-master-arm
   artifacts:
     paths:
       - public
