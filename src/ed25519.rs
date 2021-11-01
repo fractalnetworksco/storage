@@ -1,12 +1,14 @@
-use bytes::{Bytes, BytesMut, Buf};
-use ed25519_dalek::{Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, SIGNATURE_LENGTH, Signature};
+use bytes::{Buf, Bytes, BytesMut};
+use ed25519_dalek::{
+    Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, Signature, SIGNATURE_LENGTH,
+};
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
 use rand_core::OsRng;
+use std::error::Error as StdError;
 use std::pin::Pin;
 use std::str::FromStr;
-use std::error::Error as StdError;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Privkey([u8; 32]);
@@ -127,7 +129,10 @@ pub struct VerifyStream<E: StdError> {
 
 impl<E: StdError> VerifyStream<E> {
     /// Create a new VerifyStream instance from an existing public key and stream.
-    pub fn new(pubkey: &Pubkey, stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>) -> VerifyStream<E> {
+    pub fn new(
+        pubkey: &Pubkey,
+        stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
+    ) -> VerifyStream<E> {
         VerifyStream {
             pubkey: pubkey.clone(),
             hasher: Sha512::new(),
@@ -212,7 +217,10 @@ impl<E: StdError> Stream for VerifyStream<E> {
                 let signature = Signature::new(signature);
 
                 let pubkey = PublicKey::from_bytes(&self.pubkey.0).unwrap();
-                if pubkey.verify_prehashed(self.hasher.clone(), None, &signature).is_ok() {
+                if pubkey
+                    .verify_prehashed(self.hasher.clone(), None, &signature)
+                    .is_ok()
+                {
                     self.verification = Some(true);
                 }
             }
