@@ -1,10 +1,9 @@
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use ed25519_dalek::{Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, SIGNATURE_LENGTH};
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
 use rand_core::OsRng;
-use ringbuffer::{AllocRingBuffer, RingBuffer};
 use std::pin::Pin;
 use std::str::FromStr;
 use std::error::Error as StdError;
@@ -122,7 +121,8 @@ pub struct VerifyStream<E: StdError> {
     hasher: Sha512,
     stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
     verification: Option<bool>,
-    buffer: AllocRingBuffer<u8>,
+    buffer: BytesMut,
+    queue: Option<Bytes>,
 }
 
 impl<E: StdError> VerifyStream<E> {
@@ -133,7 +133,8 @@ impl<E: StdError> VerifyStream<E> {
             hasher: Sha512::new(),
             stream,
             verification: None,
-            buffer: AllocRingBuffer::with_capacity(SIGNATURE_LENGTH),
+            buffer: BytesMut::with_capacity(SIGNATURE_LENGTH),
+            queue: None,
         }
     }
 
@@ -152,10 +153,46 @@ impl<E: StdError> Stream for VerifyStream<E> {
             return Poll::Ready(None);
         }
 
-        let result = Pin::new(&mut self.stream).poll_next(cx);
-        match &result {
+        if let Some(queue) = self.queue.clone() {
+            self.queue = None;
+            return Poll::Ready(Some(Ok(queue)));
+        }
+
+        let mut result = Pin::new(&mut self.stream).poll_next(cx);
+        match &mut result {
             Poll::Ready(Some(Ok(bytes))) => {
-                // put stuff into ringbuffer
+                // if we haven't gotten a full signature yet, just read and keep pending.
+                let total_length = self.buffer.len() + bytes.len();
+                if total_length <= SIGNATURE_LENGTH {
+                    // we have nothing to return yet.
+                    self.buffer.extend_from_slice(bytes);
+                    return Poll::Pending;
+                }
+
+                // how many bytes are ready to return?
+                let done_bytes = total_length - SIGNATURE_LENGTH;
+
+                // do we return the entire buffer?
+                if done_bytes >= self.buffer.len() {
+                    let retval = self.buffer.clone().freeze();
+
+                    // split off new buffer
+                    let new_buffer = bytes.split_off(bytes.len() - SIGNATURE_LENGTH);
+                    self.buffer.clear();
+                    self.buffer.extend_from_slice(&new_buffer);
+
+                    // update queue
+                    self.queue = Some(bytes.clone());
+
+                    // hash new data
+                    self.hasher.update(&retval);
+                    self.hasher.update(&bytes);
+
+                    // return previous buffer
+                    return Poll::Ready(Some(Ok(retval)));
+                } else {
+                    unimplemented!()
+                }
             }
             Poll::Ready(Some(Err(error))) => self.verification = Some(false),
             Poll::Ready(None) => {
