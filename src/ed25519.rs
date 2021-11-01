@@ -1,9 +1,10 @@
 use bytes::Bytes;
-use ed25519_dalek::{Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512};
+use ed25519_dalek::{Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, SIGNATURE_LENGTH};
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
 use rand_core::OsRng;
+use ringbuffer::{AllocRingBuffer, RingBuffer};
 use std::pin::Pin;
 use std::str::FromStr;
 use std::error::Error as StdError;
@@ -120,8 +121,8 @@ pub struct VerifyStream<E: StdError> {
     pubkey: Pubkey,
     hasher: Sha512,
     stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
-    verification: bool,
-    eof: bool,
+    verification: Option<bool>,
+    buffer: AllocRingBuffer<u8>,
 }
 
 impl<E: StdError> VerifyStream<E> {
@@ -131,13 +132,38 @@ impl<E: StdError> VerifyStream<E> {
             pubkey: pubkey.clone(),
             hasher: Sha512::new(),
             stream,
-            verification: false,
-            eof: false,
+            verification: None,
+            buffer: AllocRingBuffer::with_capacity(SIGNATURE_LENGTH),
         }
     }
 
     /// Check to see if the stream is verified yet.
-    pub fn verify(&self) -> bool {
+    pub fn verify(&self) -> Option<bool> {
         self.verification
+    }
+}
+
+impl<E: StdError> Stream for VerifyStream<E> {
+    type Item = Result<Bytes, E>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        // if the verification is done, stop passing through data
+        if self.verification.is_some() {
+            return Poll::Ready(None);
+        }
+
+        let result = Pin::new(&mut self.stream).poll_next(cx);
+        match &result {
+            Poll::Ready(Some(Ok(bytes))) => {
+                // put stuff into ringbuffer
+            }
+            Poll::Ready(Some(Err(error))) => self.verification = Some(false),
+            Poll::Ready(None) => {
+                // do validation
+            }
+            _ => {}
+        }
+
+        result
     }
 }

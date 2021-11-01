@@ -152,6 +152,7 @@ impl Storage for Url {
         }
         let response = client.post(url).query(&query).send().await?;
         if response.status().is_success() {
+            let stream = VerifyStream::new(&volume.pubkey(), Box::pin(response.bytes_stream()));
             Ok(())
         } else {
             Ok(())
