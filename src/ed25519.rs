@@ -6,6 +6,7 @@ use futures::task::Poll;
 use rand_core::OsRng;
 use std::pin::Pin;
 use std::str::FromStr;
+use std::error::Error as StdError;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Privkey([u8; 32]);
@@ -113,6 +114,30 @@ impl Stream for SignedStream {
     }
 }
 
-struct VerifyStream {
+/// Given a public key and a signed Ed25519 stream, this stream adaptor will
+/// verify the stream on-the-fly.
+pub struct VerifyStream<E: StdError> {
     pubkey: Pubkey,
+    hasher: Sha512,
+    stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
+    verification: bool,
+    eof: bool,
+}
+
+impl<E: StdError> VerifyStream<E> {
+    /// Create a new VerifyStream instance from an existing public key and stream.
+    pub fn new(pubkey: &Pubkey, stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>) -> VerifyStream<E> {
+        VerifyStream {
+            pubkey: pubkey.clone(),
+            hasher: Sha512::new(),
+            stream,
+            verification: false,
+            eof: false,
+        }
+    }
+
+    /// Check to see if the stream is verified yet.
+    pub fn verify(&self) -> bool {
+        self.verification
+    }
 }
