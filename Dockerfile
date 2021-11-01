@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM debian:11
 
 ENV STORAGE_PORT=8000
 ENV STORAGE_DATABASE=/tmp/gateway.db
