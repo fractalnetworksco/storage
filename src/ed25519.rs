@@ -210,6 +210,7 @@ impl<E: StdError> Stream for VerifyStream<E> {
             Poll::Ready(None) => {
                 if self.buffer.len() < SIGNATURE_LENGTH {
                     self.verification = Some(false);
+                    return Poll::Ready(None);
                 }
 
                 let mut signature = [0; SIGNATURE_LENGTH];
@@ -217,12 +218,10 @@ impl<E: StdError> Stream for VerifyStream<E> {
                 let signature = Signature::new(signature);
 
                 let pubkey = PublicKey::from_bytes(&self.pubkey.0).unwrap();
-                if pubkey
+                let result = pubkey
                     .verify_prehashed(self.hasher.clone(), None, &signature)
-                    .is_ok()
-                {
-                    self.verification = Some(true);
-                }
+                    .is_ok();
+                self.verification = Some(result);
             }
             _ => {}
         }
