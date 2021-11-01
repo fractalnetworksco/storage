@@ -1,5 +1,5 @@
-use bytes::{Bytes, BytesMut};
-use ed25519_dalek::{Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, SIGNATURE_LENGTH};
+use bytes::{Bytes, BytesMut, Buf};
+use ed25519_dalek::{Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, SIGNATURE_LENGTH, Signature};
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
@@ -191,12 +191,30 @@ impl<E: StdError> Stream for VerifyStream<E> {
                     // return previous buffer
                     return Poll::Ready(Some(Ok(retval)));
                 } else {
-                    unimplemented!()
+                    let mut retval = self.buffer.clone();
+                    let buffer_fragment = retval.split_off(done_bytes);
+                    self.buffer.clear();
+                    self.buffer.extend_from_slice(&buffer_fragment);
+                    self.buffer.extend_from_slice(&bytes);
+
+                    self.hasher.update(&retval);
+                    return Poll::Ready(Some(Ok(retval.freeze())));
                 }
             }
             Poll::Ready(Some(Err(error))) => self.verification = Some(false),
             Poll::Ready(None) => {
-                // do validation
+                if self.buffer.len() < SIGNATURE_LENGTH {
+                    self.verification = Some(false);
+                }
+
+                let mut signature = [0; SIGNATURE_LENGTH];
+                self.buffer.copy_to_slice(&mut signature);
+                let signature = Signature::new(signature);
+
+                let pubkey = PublicKey::from_bytes(&self.pubkey.0).unwrap();
+                if pubkey.verify_prehashed(self.hasher.clone(), None, &signature).is_ok() {
+                    self.verification = Some(true);
+                }
             }
             _ => {}
         }

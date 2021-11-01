@@ -150,9 +150,15 @@ impl Storage for Url {
         if let Some(parent) = parent {
             query.push(("parent", parent.to_string()));
         }
-        let response = client.post(url).query(&query).send().await?;
+        let response = client.get(url).query(&query).send().await?;
         if response.status().is_success() {
-            let stream = VerifyStream::new(&volume.pubkey(), Box::pin(response.bytes_stream()));
+            let mut stream = VerifyStream::new(&volume.pubkey(), Box::pin(response.bytes_stream()));
+            loop {
+                if stream.next().await.is_none() {
+                    break;
+                }
+            }
+            println!("verification: {:?}", stream.verify());
             Ok(())
         } else {
             Ok(())
