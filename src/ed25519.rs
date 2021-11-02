@@ -9,6 +9,7 @@ use rand_core::OsRng;
 use std::error::Error as StdError;
 use std::pin::Pin;
 use std::str::FromStr;
+use std::ops::Deref;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Privkey([u8; 32]);
@@ -19,6 +20,17 @@ pub struct Pubkey([u8; 32]);
 impl Pubkey {
     pub fn to_hex(&self) -> String {
         hex::encode(&self.0)
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+impl Deref for Pubkey {
+    type Target = [u8];
+    fn deref(&self) -> &Self::Target {
+        &self.0[..]
     }
 }
 
@@ -32,6 +44,17 @@ impl Privkey {
         let secret_key = SecretKey::from_bytes(&self.0).unwrap();
         let public_key: PublicKey = (&secret_key).into();
         Pubkey(public_key.to_bytes())
+    }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0[..]
+    }
+}
+
+impl Deref for Privkey {
+    type Target = [u8];
+    fn deref(&self) -> &Self::Target {
+        &self.0[..]
     }
 }
 
