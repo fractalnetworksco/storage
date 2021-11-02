@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::StreamExt;
-use reqwest::Client;
+use reqwest::{Client, ClientBuilder};
 use std::path::PathBuf;
 use std::pin::Pin;
 use storage_api::{ed25519::*, SnapshotHeader, Storage};
@@ -12,8 +12,12 @@ use url::Url;
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Options {
+    /// Url to the server running the storage API.
     #[structopt(long, short)]
     server: Url,
+    /// Allow invalid TLS certificates.
+    #[structopt(long)]
+    insecure: bool,
     #[structopt(subcommand)]
     command: Command,
 }
@@ -88,7 +92,9 @@ pub struct FetchCommand {
 
 impl Options {
     pub async fn run(&self) -> Result<()> {
-        let client = Client::new();
+        let client = ClientBuilder::new()
+            .danger_accept_invalid_certs(self.insecure)
+            .build()?;
         match &self.command {
             Command::Create(create) => {
                 let privkey = create.privkey.unwrap_or_else(|| {
