@@ -25,6 +25,10 @@ impl Pubkey {
     pub fn as_slice(&self) -> &[u8] {
         &self.0[..]
     }
+
+    pub fn new(key: [u8; 32]) -> Self {
+        Pubkey(key)
+    }
 }
 
 impl Deref for Pubkey {
@@ -48,6 +52,10 @@ impl Privkey {
 
     pub fn as_slice(&self) -> &[u8] {
         &self.0[..]
+    }
+
+    pub fn new(key: [u8; 32]) -> Self {
+        Privkey(key)
     }
 }
 
