@@ -70,6 +70,7 @@ impl<E: StdError, S: Stream<Item = Result<Bytes, E>>> Stream for EncryptionStrea
     }
 }
 
+#[cfg(test)]
 #[tokio::test]
 async fn test_empty_stream() {
     use futures::StreamExt;
@@ -89,6 +90,7 @@ async fn test_empty_stream() {
     assert_eq!(crypt_stream.state, EncryptionStreamState::Done);
 }
 
+#[cfg(test)]
 #[tokio::test]
 async fn test_one_stream() {
     use futures::StreamExt;
@@ -109,6 +111,7 @@ async fn test_one_stream() {
     assert_eq!(crypt_stream.state, EncryptionStreamState::Done);
 }
 
+#[cfg(test)]
 #[tokio::test]
 async fn test_multiple_stream() {
     use futures::StreamExt;
@@ -141,6 +144,7 @@ async fn test_multiple_stream() {
     assert_eq!(crypt_stream.state, EncryptionStreamState::Done);
 }
 
+#[cfg(test)]
 #[tokio::test]
 async fn test_error_stream() {
     use futures::StreamExt;
