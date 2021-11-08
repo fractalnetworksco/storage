@@ -140,3 +140,31 @@ async fn test_multiple_stream() {
     assert!(crypt_stream.next().await.is_none());
     assert_eq!(crypt_stream.state, EncryptionStreamState::Done);
 }
+
+#[tokio::test]
+async fn test_error_stream() {
+    use futures::StreamExt;
+    let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
+    let stream = futures::stream::iter(vec![
+        Ok(Bytes::copy_from_slice(b"hello")),
+        Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "error")),
+        Ok(Bytes::copy_from_slice(b"world!")),
+    ]);
+    let mut crypt_stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    assert_eq!(crypt_stream.state, EncryptionStreamState::Start);
+
+    let result = crypt_stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), crypt_stream.nonce.as_slice());
+    assert_eq!(crypt_stream.state, EncryptionStreamState::Stream);
+
+    let result = crypt_stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 5);
+    assert_eq!(crypt_stream.state, EncryptionStreamState::Stream);
+
+    let result = crypt_stream.next().await.unwrap();
+    assert!(result.is_err());
+    assert_eq!(crypt_stream.state, EncryptionStreamState::Error);
+
+    assert!(crypt_stream.next().await.is_none());
+    assert_eq!(crypt_stream.state, EncryptionStreamState::Error);
+}
