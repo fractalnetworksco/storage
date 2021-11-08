@@ -1,4 +1,4 @@
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut, BufMut, Buf};
 use chacha20::cipher::{NewCipher, StreamCipher};
 use chacha20::{Key, XChaCha20, XNonce};
 use futures::task::Context;
@@ -65,6 +65,85 @@ impl<E: StdError, S: Stream<Item = Result<Bytes, E>>> Stream for EncryptionStrea
                 }
                 _ => unimplemented!(),
             },
+            Done | Error => Poll::Ready(None),
+        }
+    }
+}
+
+enum DecryptionStreamState {
+    Start(Key, BytesMut),
+    Stream(XChaCha20),
+    Done,
+    Error,
+}
+
+pub struct DecryptionStream<E: StdError, S: Stream<Item = Result<Bytes, E>>> {
+    stream: Pin<Box<S>>,
+    state: DecryptionStreamState,
+}
+
+impl<E: StdError, S: Stream<Item = Result<Bytes, E>>> DecryptionStream<E, S> {
+    pub fn new(stream: S, key: &Key) -> Self {
+        DecryptionStream {
+            stream: Box::pin(stream),
+            state: DecryptionStreamState::Start(key.clone(), BytesMut::with_capacity(24)),
+        }
+    }
+}
+
+impl<E: StdError, S: Stream<Item = Result<Bytes, E>>> Stream for DecryptionStream<E, S> {
+    type Item = Result<Bytes, E>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        use DecryptionStreamState::*;
+        let mut result = Pin::new(&mut self.stream).poll_next(cx);
+        match &mut self.state {
+            Start(key, nonce) => {
+                match result {
+                    Poll::Ready(Some(Ok(mut bytes))) => {
+                        println!("nonce len is: {}", nonce.len());
+                        let nonce_data = bytes.split_to((24 - nonce.len()).min(bytes.len()));
+                        nonce.put(nonce_data);
+                        if nonce.len() == 24 {
+                            let nonce = XNonce::from_slice(&nonce);
+                            let mut crypter = XChaCha20::new(&key, &nonce);
+                            let mut bytes: BytesMut = bytes.chunk().into();
+                            crypter.apply_keystream(&mut bytes);
+                            self.state = DecryptionStreamState::Stream(crypter);
+                            Poll::Ready(Some(Ok(bytes.freeze())))
+                        } else {
+                            Poll::Ready(Some(Ok(bytes)))
+                        }
+                    }
+                    error @ Poll::Ready(Some(Err(_))) => {
+                        self.state = DecryptionStreamState::Error;
+                        error
+                    }
+                    done @ Poll::Ready(None) => {
+                        self.state = DecryptionStreamState::Done;
+                        done
+                    }
+                    result => result
+                }
+            }
+            Stream(xchacha) => {
+                match result {
+                    Poll::Ready(Some(Ok(mut bytes))) => {
+                        let mut bytes: BytesMut = bytes.chunk().into();
+                        xchacha.apply_keystream(&mut bytes);
+                        Poll::Ready(Some(Ok(bytes.freeze())))
+                    }
+                    error @ Poll::Ready(Some(Err(_))) => {
+                        self.state = DecryptionStreamState::Error;
+                        error
+                    }
+                    done @ Poll::Ready(None) => {
+                        self.state = DecryptionStreamState::Done;
+                        done
+                    }
+                    result => result
+                }
+            }
             Done | Error => Poll::Ready(None),
         }
     }
@@ -171,4 +250,42 @@ async fn test_error_stream() {
 
     assert!(crypt_stream.next().await.is_none());
     assert_eq!(crypt_stream.state, EncryptionStreamState::Error);
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn test_decrypt_empty_stream() {
+    use futures::StreamExt;
+    let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
+    let nonce: Bytes = "s91hd9v0-dk2ldlv;as920di".into();
+    let stream = futures::stream::iter(vec![
+        Ok(nonce),
+    ]);
+    let mut crypt_stream = DecryptionStream::<std::io::Error, _>::new(stream, key);
+
+    let result = crypt_stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), Bytes::new());
+    assert!(crypt_stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn test_decrypt_empty_stream2() {
+    use futures::StreamExt;
+    let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
+    let nonce1: Bytes = "s91hd9v0-dk".into();
+    let nonce2: Bytes = "2ldlv;as920di".into();
+    let stream = futures::stream::iter(vec![
+        Ok(nonce1),
+        Ok(nonce2),
+    ]);
+    let mut crypt_stream = DecryptionStream::<std::io::Error, _>::new(stream, key);
+
+    let result = crypt_stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), Bytes::new());
+
+    let result = crypt_stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), Bytes::new());
+
+    assert!(crypt_stream.next().await.is_none());
 }
