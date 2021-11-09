@@ -283,3 +283,60 @@ async fn test_decrypt_empty_stream2() {
 
     assert!(crypt_stream.next().await.is_none());
 }
+
+#[cfg(test)]
+#[tokio::test]
+async fn test_endtoend_empty_stream() {
+    use futures::StreamExt;
+    let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
+    let stream = futures::stream::iter(vec![]);
+    let stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let mut stream = DecryptionStream::<std::io::Error, _>::new(stream, key);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), Bytes::new());
+
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn test_endtoend_single_stream() {
+    use futures::StreamExt;
+    let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
+    let data: Bytes = "hello, world!".into();
+    let stream = futures::stream::iter(vec![Ok(data.clone())]);
+    let stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let mut stream = DecryptionStream::<std::io::Error, _>::new(stream, key);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), Bytes::new());
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data);
+
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn test_endtoend_multi_stream() {
+    use futures::StreamExt;
+    let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
+    let data1: Bytes = "hello, world!".into();
+    let data2: Bytes = "this is an example".into();
+    let stream = futures::stream::iter(vec![Ok(data1.clone()), Ok(data2.clone())]);
+    let stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let mut stream = DecryptionStream::<std::io::Error, _>::new(stream, key);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), Bytes::new());
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data1);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data2);
+
+    assert!(stream.next().await.is_none());
+}
