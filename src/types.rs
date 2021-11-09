@@ -97,6 +97,8 @@ impl Stream for HeaderVerifyStream {
 
         let result = Pin::new(&mut self.stream).poll_next(cx);
 
+        unimplemented!()
+        /*
         if self.buffer.len() >= SNAPSHOT_HEADER_SIZE {
             return result;
         }
@@ -119,5 +121,6 @@ impl Stream for HeaderVerifyStream {
             }
             result => result,
         }
+        */
     }
 }

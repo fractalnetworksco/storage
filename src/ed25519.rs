@@ -90,31 +90,31 @@ impl std::fmt::Display for Pubkey {
 /// all of the data, but with the twist that if no error has occured while
 /// streaming the data, it will append a valid Ed25519 Signature of the entire
 /// data stream generated with the private key that it posesses.
-pub struct SignStream {
+pub struct SignStream<E: StdError> {
     privkey: Privkey,
     hasher: Sha512,
-    stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
+    stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
     eof: bool,
 }
 
-impl SignStream {
+impl<E: StdError> SignStream<E> {
     /// Create a new SignStream instance, giving it a private key (this will
     /// be copied and stored) and a pinned, boxed Stream instance.
-    pub fn new(
+    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(
+        stream: S,
         privkey: &Privkey,
-        stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
     ) -> Self {
         SignStream {
             hasher: Sha512::new(),
             eof: false,
             privkey: privkey.clone(),
-            stream,
+            stream: Box::pin(stream),
         }
     }
 }
 
-impl Stream for SignStream {
-    type Item = Result<Bytes, std::io::Error>;
+impl<E: StdError> Stream for SignStream<E> {
+    type Item = Result<Bytes, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if self.eof {
@@ -156,11 +156,19 @@ pub struct VerifyStream<E: StdError> {
     verification: Option<bool>,
     buffer: BytesMut,
     queue: Option<Bytes>,
+    state: VerifyStreamState,
 }
 
 pub enum VerifyError<E: StdError> {
     Stream(E),
     Incorrect,
+}
+
+pub enum VerifyStreamState {
+    Start(Sha512, BytesMut),
+    Valid,
+    Invalid,
+    Error,
 }
 
 impl<E: StdError> VerifyStream<E> {
@@ -176,6 +184,7 @@ impl<E: StdError> VerifyStream<E> {
             verification: None,
             buffer: BytesMut::with_capacity(SIGNATURE_LENGTH),
             queue: None,
+            state: VerifyStreamState::Start(Sha512::new(), BytesMut::with_capacity(SIGNATURE_LENGTH)),
         }
     }
 
@@ -186,7 +195,7 @@ impl<E: StdError> VerifyStream<E> {
 }
 
 impl<E: StdError> Stream for VerifyStream<E> {
-    type Item = Result<Bytes, E>;
+    type Item = Result<Bytes, VerifyError<E>>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         // if the verification is done, stop passing through data
@@ -200,13 +209,13 @@ impl<E: StdError> Stream for VerifyStream<E> {
         }
 
         let mut result = Pin::new(&mut self.stream).poll_next(cx);
-        match &mut result {
-            Poll::Ready(Some(Ok(bytes))) => {
+        match result {
+            Poll::Ready(Some(Ok(mut bytes))) => {
                 // if we haven't gotten a full signature yet, just read and keep pending.
                 let total_length = self.buffer.len() + bytes.len();
                 if total_length <= SIGNATURE_LENGTH {
                     // we have nothing to return yet.
-                    self.buffer.extend_from_slice(bytes);
+                    self.buffer.extend_from_slice(&bytes);
                     return Poll::Pending;
                 }
 
@@ -230,7 +239,7 @@ impl<E: StdError> Stream for VerifyStream<E> {
                     self.hasher.update(&bytes);
 
                     // return previous buffer
-                    return Poll::Ready(Some(Ok(retval)));
+                    Poll::Ready(Some(Ok(retval)))
                 } else {
                     let mut retval = self.buffer.clone();
                     let buffer_fragment = retval.split_off(done_bytes);
@@ -239,10 +248,13 @@ impl<E: StdError> Stream for VerifyStream<E> {
                     self.buffer.extend_from_slice(&bytes);
 
                     self.hasher.update(&retval);
-                    return Poll::Ready(Some(Ok(retval.freeze())));
+                    Poll::Ready(Some(Ok(retval.freeze())))
                 }
             }
-            Poll::Ready(Some(Err(error))) => self.verification = Some(false),
+            Poll::Ready(Some(Err(error))) => {
+                self.verification = Some(false);
+                Poll::Ready(Some(Err(VerifyError::Stream(error))))
+            }
             Poll::Ready(None) => {
                 if self.buffer.len() < SIGNATURE_LENGTH {
                     self.verification = Some(false);
@@ -258,10 +270,98 @@ impl<E: StdError> Stream for VerifyStream<E> {
                     .verify_prehashed(self.hasher.clone(), None, &signature)
                     .is_ok();
                 self.verification = Some(result);
+                Poll::Ready(None)
             }
-            _ => {}
+            Poll::Pending => Poll::Pending,
         }
-
-        result
     }
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn sign_empty_stream() {
+    use futures::StreamExt;
+    let key = Privkey::generate();
+    let stream = futures::stream::iter(vec![]);
+    let mut stream = SignStream::<std::io::Error>::new(stream, &key);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 64);
+
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn sign_single_stream() {
+    use futures::StreamExt;
+    let key = Privkey::generate();
+    let data: Bytes = "this is some test data".into();
+    let stream = futures::stream::iter(vec![
+        Ok(data.clone())
+    ]);
+    let mut stream = SignStream::<std::io::Error>::new(stream, &key);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 64);
+
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn sign_multi_stream() {
+    use futures::StreamExt;
+    let key = Privkey::generate();
+    let data1: Bytes = "this is some test data".into();
+    let data2: Bytes = "hello world".into();
+    let data3: Bytes = "oj is guilty".into();
+    let stream = futures::stream::iter(vec![
+        Ok(data1.clone()),
+        Ok(data2.clone()),
+        Ok(data3.clone()),
+    ]);
+    let mut stream = SignStream::<std::io::Error>::new(stream, &key);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data1);
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data2);
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data3);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 64);
+
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn sign_error_stream() {
+    use futures::StreamExt;
+    let key = Privkey::generate();
+    let data1: Bytes = "this is some test data".into();
+    let data2: Bytes = "the answer is 42".into();
+    let stream = futures::stream::iter(vec![
+        Ok(data1.clone()),
+        Err(std::io::Error::new(std::io::ErrorKind::Other, "error")),
+        Ok(data2.clone()),
+    ]);
+    let mut stream = SignStream::<std::io::Error>::new(stream, &key);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data1);
+    let result = stream.next().await.unwrap();
+    assert!(result.is_err());
+
+    // do not produce signature after error
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
 }
