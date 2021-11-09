@@ -184,7 +184,10 @@ impl<E: StdError> VerifyStream<E> {
             verification: None,
             buffer: BytesMut::with_capacity(SIGNATURE_LENGTH),
             queue: None,
-            state: VerifyStreamState::Start(Sha512::new(), BytesMut::with_capacity(SIGNATURE_LENGTH)),
+            state: VerifyStreamState::Start(
+                Sha512::new(),
+                BytesMut::with_capacity(SIGNATURE_LENGTH),
+            ),
         }
     }
 
@@ -298,9 +301,7 @@ async fn sign_single_stream() {
     use futures::StreamExt;
     let key = Privkey::generate();
     let data: Bytes = "this is some test data".into();
-    let stream = futures::stream::iter(vec![
-        Ok(data.clone())
-    ]);
+    let stream = futures::stream::iter(vec![Ok(data.clone())]);
     let mut stream = SignStream::<std::io::Error>::new(stream, &key);
 
     let result = stream.next().await.unwrap();

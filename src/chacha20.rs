@@ -24,7 +24,10 @@ pub struct EncryptionStream<E: StdError> {
 }
 
 impl<E: StdError> EncryptionStream<E> {
-    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(stream: S, key: &Key) -> Self {
+    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(
+        stream: S,
+        key: &Key,
+    ) -> Self {
         // generate nonce
         let mut nonce = [0u8; 24];
         OsRng.fill_bytes(&mut nonce);
@@ -83,7 +86,10 @@ pub struct DecryptionStream<E: StdError> {
 }
 
 impl<E: StdError> DecryptionStream<E> {
-    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(stream: S, key: &Key) -> Self {
+    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(
+        stream: S,
+        key: &Key,
+    ) -> Self {
         DecryptionStream {
             stream: Box::pin(stream),
             state: DecryptionStreamState::Start(key.clone(), BytesMut::with_capacity(24)),
