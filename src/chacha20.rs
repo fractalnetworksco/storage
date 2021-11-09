@@ -16,15 +16,15 @@ enum EncryptionStreamState {
     Error,
 }
 
-pub struct EncryptionStream<E: StdError, S: Stream<Item = Result<Bytes, E>>> {
-    stream: Pin<Box<S>>,
+pub struct EncryptionStream<E: StdError> {
+    stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
     state: EncryptionStreamState,
     nonce: XNonce,
     crypt: XChaCha20,
 }
 
-impl<E: StdError, S: Stream<Item = Result<Bytes, E>>> EncryptionStream<E, S> {
-    pub fn new(stream: S, key: &Key) -> Self {
+impl<E: StdError> EncryptionStream<E> {
+    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(stream: S, key: &Key) -> Self {
         // generate nonce
         let mut nonce = [0u8; 24];
         OsRng.fill_bytes(&mut nonce);
@@ -39,7 +39,7 @@ impl<E: StdError, S: Stream<Item = Result<Bytes, E>>> EncryptionStream<E, S> {
     }
 }
 
-impl<E: StdError, S: Stream<Item = Result<Bytes, E>>> Stream for EncryptionStream<E, S> {
+impl<E: StdError> Stream for EncryptionStream<E> {
     type Item = Result<Bytes, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -151,7 +151,7 @@ async fn test_empty_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![]);
-    let mut crypt_stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let mut crypt_stream = EncryptionStream::<std::io::Error>::new(stream, key);
     assert_eq!(crypt_stream.state, EncryptionStreamState::Start);
 
     let result = crypt_stream.next().await.unwrap();
@@ -171,7 +171,7 @@ async fn test_one_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![Ok(Bytes::copy_from_slice(b"hello"))]);
-    let mut crypt_stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let mut crypt_stream = EncryptionStream::<std::io::Error>::new(stream, key);
     assert_eq!(crypt_stream.state, EncryptionStreamState::Start);
 
     let result = crypt_stream.next().await.unwrap();
@@ -196,7 +196,7 @@ async fn test_multiple_stream() {
         Ok(Bytes::copy_from_slice(b"there")),
         Ok(Bytes::copy_from_slice(b"world!")),
     ]);
-    let mut crypt_stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let mut crypt_stream = EncryptionStream::<std::io::Error>::new(stream, key);
     assert_eq!(crypt_stream.state, EncryptionStreamState::Start);
 
     let result = crypt_stream.next().await.unwrap();
@@ -232,7 +232,7 @@ async fn test_error_stream() {
         )),
         Ok(Bytes::copy_from_slice(b"world!")),
     ]);
-    let mut crypt_stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let mut crypt_stream = EncryptionStream::<std::io::Error>::new(stream, key);
     assert_eq!(crypt_stream.state, EncryptionStreamState::Start);
 
     let result = crypt_stream.next().await.unwrap();
@@ -290,7 +290,7 @@ async fn test_endtoend_empty_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![]);
-    let stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let stream = EncryptionStream::<std::io::Error>::new(stream, key);
     let mut stream = DecryptionStream::<std::io::Error, _>::new(stream, key);
 
     let result = stream.next().await.unwrap();
@@ -306,7 +306,7 @@ async fn test_endtoend_single_stream() {
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let data: Bytes = "hello, world!".into();
     let stream = futures::stream::iter(vec![Ok(data.clone())]);
-    let stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let stream = EncryptionStream::<std::io::Error>::new(stream, key);
     let mut stream = DecryptionStream::<std::io::Error, _>::new(stream, key);
 
     let result = stream.next().await.unwrap();
@@ -326,7 +326,7 @@ async fn test_endtoend_multi_stream() {
     let data1: Bytes = "hello, world!".into();
     let data2: Bytes = "this is an example".into();
     let stream = futures::stream::iter(vec![Ok(data1.clone()), Ok(data2.clone())]);
-    let stream = EncryptionStream::<std::io::Error, _>::new(stream, key);
+    let stream = EncryptionStream::<std::io::Error>::new(stream, key);
     let mut stream = DecryptionStream::<std::io::Error, _>::new(stream, key);
 
     let result = stream.next().await.unwrap();
