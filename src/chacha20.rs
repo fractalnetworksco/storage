@@ -147,7 +147,7 @@ impl<E: StdError> Stream for DecryptionStream<E> {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_empty_stream() {
+async fn empty_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![]);
@@ -167,7 +167,7 @@ async fn test_empty_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_one_stream() {
+async fn one_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![Ok(Bytes::copy_from_slice(b"hello"))]);
@@ -188,7 +188,7 @@ async fn test_one_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_multiple_stream() {
+async fn multiple_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![
@@ -221,7 +221,7 @@ async fn test_multiple_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_error_stream() {
+async fn error_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![
@@ -253,7 +253,7 @@ async fn test_error_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_decrypt_empty_stream() {
+async fn decrypt_empty_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let nonce: Bytes = "s91hd9v0-dk2ldlv;as920di".into();
@@ -267,7 +267,7 @@ async fn test_decrypt_empty_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_decrypt_empty_stream2() {
+async fn decrypt_empty_stream2() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let nonce1: Bytes = "s91hd9v0-dk".into();
@@ -286,7 +286,7 @@ async fn test_decrypt_empty_stream2() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_endtoend_empty_stream() {
+async fn endtoend_empty_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![]);
@@ -301,7 +301,7 @@ async fn test_endtoend_empty_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_endtoend_single_stream() {
+async fn endtoend_single_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let data: Bytes = "hello, world!".into();
@@ -320,7 +320,7 @@ async fn test_endtoend_single_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn test_endtoend_multi_stream() {
+async fn endtoend_multi_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let data1: Bytes = "hello, world!".into();
