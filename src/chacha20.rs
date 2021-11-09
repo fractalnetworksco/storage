@@ -147,7 +147,7 @@ impl<E: StdError> Stream for DecryptionStream<E> {
 
 #[cfg(test)]
 #[tokio::test]
-async fn empty_stream() {
+async fn encrypt_empty_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![]);
@@ -167,7 +167,7 @@ async fn empty_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn one_stream() {
+async fn encrypt_single_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![Ok(Bytes::copy_from_slice(b"hello"))]);
@@ -188,7 +188,7 @@ async fn one_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn multiple_stream() {
+async fn encrypt_multi_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![
@@ -221,7 +221,7 @@ async fn multiple_stream() {
 
 #[cfg(test)]
 #[tokio::test]
-async fn error_stream() {
+async fn encrypt_error_stream() {
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![
