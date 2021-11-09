@@ -124,7 +124,7 @@ impl Storage for Url {
         let header = header.to_bytes();
         let header_stream = tokio_stream::once(Ok(Bytes::from(header)));
         let stream = header_stream.chain(ReaderStream::new(data));
-        let signed_stream = SignedStream::new(volume, Box::pin(stream));
+        let signed_stream = SignStream::new(volume, Box::pin(stream));
         let response = client
             .post(url)
             .body(Body::wrap_stream(signed_stream))

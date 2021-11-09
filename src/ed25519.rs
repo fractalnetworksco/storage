@@ -86,25 +86,25 @@ impl std::fmt::Display for Pubkey {
     }
 }
 
-/// This SignedStream wraps around an existing Stream of Bytes, passing through
+/// This SignStream wraps around an existing Stream of Bytes, passing through
 /// all of the data, but with the twist that if no error has occured while
 /// streaming the data, it will append a valid Ed25519 Signature of the entire
 /// data stream generated with the private key that it posesses.
-pub struct SignedStream {
+pub struct SignStream {
     privkey: Privkey,
     hasher: Sha512,
     stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
     eof: bool,
 }
 
-impl SignedStream {
-    /// Create a new SignedStream instance, giving it a private key (this will
+impl SignStream {
+    /// Create a new SignStream instance, giving it a private key (this will
     /// be copied and stored) and a pinned, boxed Stream instance.
     pub fn new(
         privkey: &Privkey,
         stream: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
     ) -> Self {
-        SignedStream {
+        SignStream {
             hasher: Sha512::new(),
             eof: false,
             privkey: privkey.clone(),
@@ -113,7 +113,7 @@ impl SignedStream {
     }
 }
 
-impl Stream for SignedStream {
+impl Stream for SignStream {
     type Item = Result<Bytes, std::io::Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -156,6 +156,11 @@ pub struct VerifyStream<E: StdError> {
     verification: Option<bool>,
     buffer: BytesMut,
     queue: Option<Bytes>,
+}
+
+pub enum VerifyError<E: StdError> {
+    Stream(E),
+    Incorrect,
 }
 
 impl<E: StdError> VerifyStream<E> {
