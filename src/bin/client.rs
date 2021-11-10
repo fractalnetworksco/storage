@@ -151,27 +151,16 @@ impl Options {
                 Ok(())
             }
             Command::Fetch(opts) => {
-                let mut result = self
+                let (header, mut stream) = self
                     .server
                     .fetch(&client, &opts.privkey, opts.generation, opts.parent)
                     .await?;
                 let mut stdout = tokio::io::stdout();
-                // handle first data
-                while let Some(data) = result.next().await {
-                    let data = data?;
-                    stdout.write_all(&data).await?;
-                    if data.len() > 0 {
-                        break;
-                    }
-                }
-                //let header = result.header().await?;
-                //eprintln!("{:#?}", header);
-                // stream rest of data
-                while let Some(data) = result.next().await {
+                eprintln!("{:#?}", header);
+                while let Some(data) = stream.next().await {
                     let data = data?;
                     stdout.write_all(&data).await?;
                 }
-                //eprintln!("verify: {:?}", result.verify());
                 Ok(())
             }
         }

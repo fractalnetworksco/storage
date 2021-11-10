@@ -58,7 +58,7 @@ pub trait Storage {
         volume: &Privkey,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>, Error>;
+    ) -> Result<(SnapshotHeader, Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>), Error>;
 }
 
 #[async_trait]
@@ -146,7 +146,7 @@ impl Storage for Url {
         volume: &Privkey,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>, Error> {
+    ) -> Result<(SnapshotHeader, Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>), Error> {
         let url = self
             .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
             .unwrap();
@@ -157,9 +157,15 @@ impl Storage for Url {
         let response = client.get(url).query(&query).send().await?;
         if response.status().is_success() {
             let stream = VerifyStream::new(&volume.pubkey(), response.bytes_stream());
-            let stream = HeaderStream::new(stream);
+            let mut stream = HeaderStream::new(stream);
+            let header = loop {
+                stream.next().await;
+                if let Some(header) = stream.header() {
+                    break header;
+                }
+            };
             let stream = DecryptionStream::new(stream, &volume.to_chacha20_key());
-            Ok(Box::pin(stream))
+            Ok((header, Box::pin(stream)))
         } else {
             unimplemented!()
         }
