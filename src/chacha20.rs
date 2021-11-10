@@ -66,7 +66,7 @@ impl<E: StdError> Stream for EncryptionStream<E> {
                     self.crypt.apply_keystream(&mut bytes);
                     Poll::Ready(Some(Ok(Bytes::copy_from_slice(&bytes))))
                 }
-                _ => unimplemented!(),
+                other => other,
             },
             Done | Error => Poll::Ready(None),
         }
