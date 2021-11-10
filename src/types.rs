@@ -161,13 +161,40 @@ async fn header_only_parse() {
     use futures::StreamExt;
     let header = SnapshotHeader::new(1234, Some(1233), 128);
     let data: Bytes = header.to_bytes().into();
-    let stream = futures::stream::iter(vec![
-        Ok(data),
-    ]);
+    let stream = futures::stream::iter(vec![Ok(data)]);
     let mut stream = HeaderStream::<std::io::Error>::new(stream);
+
+    assert_eq!(stream.header(), None);
 
     let result = stream.next().await.unwrap();
     assert_eq!(result.unwrap().len(), 0);
+
+    // get right header
+    assert_eq!(stream.header(), Some(header));
+
+    // no data after
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn header_split_parse() {
+    use futures::StreamExt;
+    let header = SnapshotHeader::new(1234, Some(1233), 128);
+    let data: Vec<Result<Bytes, std::io::Error>> = header
+        .to_bytes()
+        .into_iter()
+        .map(|b| Ok(vec![b].into()))
+        .collect();
+    let stream = futures::stream::iter(data);
+    let mut stream = HeaderStream::<std::io::Error>::new(stream);
+
+    for _ in 0..SNAPSHOT_HEADER_SIZE {
+        assert_eq!(stream.header(), None);
+        let result = stream.next().await.unwrap();
+        assert_eq!(result.unwrap().len(), 0);
+    }
 
     // get right header
     assert_eq!(stream.header(), Some(header));
@@ -184,11 +211,10 @@ async fn header_separate_parse() {
     let header = SnapshotHeader::new(1234, Some(1233), 128);
     let data1: Bytes = header.to_bytes().into();
     let data2: Bytes = "this is some test data".into();
-    let stream = futures::stream::iter(vec![
-        Ok(data1),
-        Ok(data2.clone()),
-    ]);
+    let stream = futures::stream::iter(vec![Ok(data1), Ok(data2.clone())]);
     let mut stream = HeaderStream::<std::io::Error>::new(stream);
+
+    assert_eq!(stream.header(), None);
 
     let result = stream.next().await.unwrap();
     assert_eq!(result.unwrap().len(), 0);
@@ -212,10 +238,11 @@ async fn header_single_parse() {
     let mut data: BytesMut = header.to_bytes().as_slice().into();
     let text: Bytes = "this is some test data".into();
     data.extend_from_slice(&text);
-    let stream = futures::stream::iter(vec![
-        Ok(data.freeze()),
-    ]);
+    let stream = futures::stream::iter(vec![Ok(data.freeze())]);
+
     let mut stream = HeaderStream::<std::io::Error>::new(stream);
+
+    assert_eq!(stream.header(), None);
 
     let result = stream.next().await.unwrap();
     assert_eq!(result.unwrap().len(), 0);
