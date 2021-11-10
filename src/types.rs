@@ -20,7 +20,7 @@ pub struct SnapshotInfo {
     pub size: u64,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SnapshotHeader {
     pub generation: u64,
     pub parent: Option<u64>,
@@ -28,6 +28,14 @@ pub struct SnapshotHeader {
 }
 
 impl SnapshotHeader {
+    pub fn new(generation: u64, parent: Option<u64>, creation: u64) -> Self {
+        SnapshotHeader {
+            generation,
+            parent,
+            creation,
+        }
+    }
+
     pub fn from_bytes(data: &[u8]) -> std::io::Result<Self> {
         let mut reader = Cursor::new(data);
         Ok(SnapshotHeader {
@@ -84,7 +92,7 @@ impl<E: StdError> HeaderStream<E> {
         }
     }
 
-    pub async fn header(&self) -> Option<SnapshotHeader> {
+    pub fn header(&self) -> Option<SnapshotHeader> {
         use HeaderStreamState::*;
         match &self.state {
             Buffered(header, _) => Some(header.clone()),
@@ -119,7 +127,7 @@ impl<E: StdError> Stream for HeaderStream<E> {
                         let total_bytes = buffer.len() + bytes.len();
 
                         // with the data we have buffered, is this enough to return some?
-                        if total_bytes <= SNAPSHOT_HEADER_SIZE {
+                        if total_bytes < SNAPSHOT_HEADER_SIZE {
                             buffer.extend_from_slice(&bytes);
                         } else {
                             // split data into part we keep (part of the header) and the part
@@ -133,7 +141,7 @@ impl<E: StdError> Stream for HeaderStream<E> {
                             // wrap E.
                             self.state = HeaderStreamState::Buffered(
                                 SnapshotHeader::from_bytes(&buffer).unwrap(),
-                                bytes,
+                                data,
                             );
                         }
                         Poll::Ready(Some(Ok(Bytes::new())))
@@ -145,4 +153,80 @@ impl<E: StdError> Stream for HeaderStream<E> {
             _ => unreachable!(),
         }
     }
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn header_only_parse() {
+    use futures::StreamExt;
+    let header = SnapshotHeader::new(1234, Some(1233), 128);
+    let data: Bytes = header.to_bytes().into();
+    let stream = futures::stream::iter(vec![
+        Ok(data),
+    ]);
+    let mut stream = HeaderStream::<std::io::Error>::new(stream);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+
+    // get right header
+    assert_eq!(stream.header(), Some(header));
+
+    // no data after
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn header_separate_parse() {
+    use futures::StreamExt;
+    let header = SnapshotHeader::new(1234, Some(1233), 128);
+    let data1: Bytes = header.to_bytes().into();
+    let data2: Bytes = "this is some test data".into();
+    let stream = futures::stream::iter(vec![
+        Ok(data1),
+        Ok(data2.clone()),
+    ]);
+    let mut stream = HeaderStream::<std::io::Error>::new(stream);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+
+    // get right header
+    assert_eq!(stream.header(), Some(header));
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), data2);
+
+    // no data after
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn header_single_parse() {
+    use futures::StreamExt;
+    let header = SnapshotHeader::new(1234, Some(1233), 128);
+    let mut data: BytesMut = header.to_bytes().as_slice().into();
+    let text: Bytes = "this is some test data".into();
+    data.extend_from_slice(&text);
+    let stream = futures::stream::iter(vec![
+        Ok(data.freeze()),
+    ]);
+    let mut stream = HeaderStream::<std::io::Error>::new(stream);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+
+    // get right header
+    assert_eq!(stream.header(), Some(header));
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap(), text);
+
+    // no data after
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
 }
