@@ -159,6 +159,7 @@ pub struct VerifyStream<E: StdError> {
     state: VerifyStreamState,
 }
 
+#[derive(Clone, Debug)]
 pub enum VerifyError<E: StdError> {
     Stream(E),
     Incorrect,
@@ -219,7 +220,7 @@ impl<E: StdError> Stream for VerifyStream<E> {
                 if total_length <= SIGNATURE_LENGTH {
                     // we have nothing to return yet.
                     self.buffer.extend_from_slice(&bytes);
-                    return Poll::Pending;
+                    return Poll::Ready(Some(Ok(Bytes::new())));
                 }
 
                 // how many bytes are ready to return?
@@ -235,7 +236,9 @@ impl<E: StdError> Stream for VerifyStream<E> {
                     self.buffer.extend_from_slice(&new_buffer);
 
                     // update queue
-                    self.queue = Some(bytes.clone());
+                    if bytes.len() > 0 {
+                        self.queue = Some(bytes.clone());
+                    }
 
                     // hash new data
                     self.hasher.update(&retval);
@@ -261,7 +264,7 @@ impl<E: StdError> Stream for VerifyStream<E> {
             Poll::Ready(None) => {
                 if self.buffer.len() < SIGNATURE_LENGTH {
                     self.verification = Some(false);
-                    return Poll::Ready(None);
+                    return Poll::Ready(Some(Err(VerifyError::Incorrect)));
                 }
 
                 let mut signature = [0; SIGNATURE_LENGTH];
@@ -364,5 +367,70 @@ async fn sign_error_stream() {
 
     // do not produce signature after error
     assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn verify_empty_stream() {
+    use futures::StreamExt;
+    let key = Privkey::generate().pubkey();
+    let stream = futures::stream::iter(vec![]);
+    let mut stream = VerifyStream::<std::io::Error>::new(&key, Box::pin(stream));
+
+    let result = stream.next().await.unwrap();
+    assert!(result.is_err());
+
+    assert!(stream.next().await.is_none());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn verify_missing_stream() {
+    use futures::StreamExt;
+    let key = Privkey::generate().pubkey();
+    let data1: Bytes = "this is some short test".into();
+    let data2: Bytes = "data that is used to assess".into();
+    let stream = futures::stream::iter(vec![
+       Ok(data1.clone()),
+       Ok(data2.clone()),
+    ]);
+    let mut stream = VerifyStream::<std::io::Error>::new(&key, Box::pin(stream));
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+
+    assert!(stream.next().await.unwrap().is_err());
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn verify_correct_stream() {
+    use futures::StreamExt;
+    let privkey = Privkey::generate();
+    let pubkey = privkey.pubkey();
+
+    let data1: Bytes = "this is some short test".into();
+    let data2: Bytes = "data that is used to assess".into();
+    let stream = futures::stream::iter(vec![
+       Ok(data1.clone()),
+       Ok(data2.clone()),
+    ]);
+    let stream = SignStream::<std::io::Error>::new(stream, &privkey);
+    let mut stream = VerifyStream::<std::io::Error>::new(&pubkey, Box::pin(stream));
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), data1.len() + data2.len());
+
     assert!(stream.next().await.is_none());
 }
