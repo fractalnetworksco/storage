@@ -164,14 +164,14 @@ impl Options {
                         break;
                     }
                 }
-                let header = result.header().await?;
-                eprintln!("{:#?}", header);
+                //let header = result.header().await?;
+                //eprintln!("{:#?}", header);
                 // stream rest of data
                 while let Some(data) = result.next().await {
                     let data = data?;
                     stdout.write_all(&data).await?;
                 }
-                eprintln!("verify: {:?}", result.verify());
+                //eprintln!("verify: {:?}", result.verify());
                 Ok(())
             }
         }

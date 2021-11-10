@@ -5,12 +5,14 @@ mod types;
 pub use crate::types::*;
 use async_trait::async_trait;
 use bytes::Bytes;
+use crate::chacha20::{EncryptionStream, DecryptionStream};
 use ed25519::*;
 use reqwest::{Body, Client, Error};
 use std::pin::Pin;
 use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
+use futures::Stream;
 use url::Url;
 
 #[async_trait]
@@ -56,7 +58,7 @@ pub trait Storage {
         volume: &Privkey,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<HeaderVerifyStream, Error>;
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>, Error>;
 }
 
 #[async_trait]
@@ -124,6 +126,7 @@ impl Storage for Url {
         let header = header.to_bytes();
         let header_stream = tokio_stream::once(Ok(Bytes::from(header)));
         let stream = header_stream.chain(ReaderStream::new(data));
+        let stream = EncryptionStream::new(stream, &volume.to_chacha20_key());
         let signed_stream = SignStream::new(stream, volume);
         let response = client
             .post(url)
@@ -143,7 +146,7 @@ impl Storage for Url {
         volume: &Privkey,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<HeaderVerifyStream, Error> {
+    ) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>, Error> {
         let url = self
             .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
             .unwrap();
@@ -153,9 +156,10 @@ impl Storage for Url {
         }
         let response = client.get(url).query(&query).send().await?;
         if response.status().is_success() {
-            let stream = VerifyStream::new(&volume.pubkey(), Box::pin(response.bytes_stream()));
-            let stream = HeaderVerifyStream::new(stream);
-            Ok(stream)
+            let stream = VerifyStream::new(&volume.pubkey(), response.bytes_stream());
+            let stream = HeaderStream::new(stream);
+            let stream = DecryptionStream::new(stream, &volume.to_chacha20_key());
+            Ok(Box::pin(stream))
         } else {
             unimplemented!()
         }

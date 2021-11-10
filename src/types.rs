@@ -8,6 +8,7 @@ use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 use std::io::Cursor;
 use std::pin::Pin;
+use std::error::Error as StdError;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
 
@@ -58,21 +59,30 @@ impl SnapshotHeader {
     }
 }
 
-pub struct HeaderVerifyStream {
-    stream: VerifyStream<ReqwestError>,
-    buffer: BytesMut,
-    queue: Option<Bytes>,
+/// Represents the state of the HeaderStream.
+enum HeaderStreamState {
+    /// Initial state. We don't yet have enough data to read the header.
+    Reading(BytesMut),
+    /// We have read the header.
+    Read(SnapshotHeader),
 }
 
-impl HeaderVerifyStream {
-    pub fn new(stream: VerifyStream<ReqwestError>) -> Self {
-        HeaderVerifyStream {
-            stream,
-            buffer: BytesMut::with_capacity(SNAPSHOT_HEADER_SIZE),
-            queue: None,
+/// Taking a bytes stream, decode the header, and pass through the other
+/// data unchanged.
+pub struct HeaderStream<E: StdError> {
+    stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
+    state: HeaderStreamState,
+}
+
+impl<E: StdError> HeaderStream<E> {
+    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(stream: S) -> Self {
+        HeaderStream {
+            stream: Box::pin(stream),
+            state: HeaderStreamState::Reading(BytesMut::with_capacity(SNAPSHOT_HEADER_SIZE)),
         }
     }
 
+    /*
     pub async fn header(&mut self) -> Result<SnapshotHeader, ReqwestError> {
         // i know, this really sucks, but not sure how to do this cleaner right now.
         if self.buffer.len() < SNAPSHOT_HEADER_SIZE {
@@ -80,47 +90,85 @@ impl HeaderVerifyStream {
         }
         Ok(SnapshotHeader::from_bytes(&self.buffer).unwrap())
     }
-
-    pub fn verify(&self) -> Option<bool> {
-        self.stream.verify()
-    }
+    */
 }
 
-impl Stream for HeaderVerifyStream {
-    type Item = Result<Bytes, ReqwestError>;
+impl<E: StdError> Stream for HeaderStream<E> {
+    type Item = Result<Bytes, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        if let Some(bytes) = self.queue.clone() {
-            self.queue = None;
-            return Poll::Ready(Some(Ok(bytes)));
-        }
-
         let result = Pin::new(&mut self.stream).poll_next(cx);
+        match &mut self.state {
+            HeaderStreamState::Reading(buffer) => {
+                match result {
+                    Poll::Ready(Some(Ok(mut bytes))) => {
+                        let total_bytes = buffer.len() + bytes.len();
 
-        unimplemented!()
-        /*
-        if self.buffer.len() >= SNAPSHOT_HEADER_SIZE {
-            return result;
-        }
+                        // with the data we have buffered, is this enough to return some?
+                        if total_bytes <= SNAPSHOT_HEADER_SIZE {
+                            buffer.extend_from_slice(&bytes);
+                            Poll::Ready(Some(Ok(Bytes::new())))
+                        } else {
+                            // split data into part we keep (part of the header) and the part
+                            // that we return (any excess).
+                            let data = bytes.split_off(SNAPSHOT_HEADER_SIZE - buffer.len());
+                            buffer.extend_from_slice(&bytes);
 
-        match result {
-            Poll::Ready(Some(Ok(mut bytes))) => {
-                let total_bytes = self.buffer.len() + bytes.len();
-
-                // with the data we have buffered, is this enough to return some?
-                if total_bytes <= SNAPSHOT_HEADER_SIZE {
-                    self.buffer.extend_from_slice(&bytes);
-                } else {
-                    // split data into part we keep (part of the header) and the part
-                    // that we return (any excess).
-                    let data = bytes.split_off(SNAPSHOT_HEADER_SIZE - self.buffer.len());
-                    self.buffer.extend_from_slice(&bytes);
-                    self.queue = Some(bytes);
+                            // update state. we can safely call unwrap here, because we
+                            // know that the size fits. if there was any other error
+                            // error reason, we have to create our own error type and
+                            // wrap E.
+                            self.state = HeaderStreamState::Read(SnapshotHeader::from_bytes(&buffer).unwrap());
+                            Poll::Ready(Some(Ok(bytes)))
+                        }
+                    }
+                    result => result,
                 }
-                Poll::Ready(Some(Ok(Bytes::new())))
             }
-            result => result,
+            HeaderStreamState::Read(_) => {
+                result
+            }
         }
-        */
+
     }
 }
+
+pub struct BytesStreamBuffer<E: StdError> {
+    stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
+    buffer: BytesMut,
+}
+
+impl<E: StdError> BytesStreamBuffer<E> {
+    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(stream: S) -> Self {
+        BytesStreamBuffer {
+            stream: Box::pin(stream),
+            buffer: BytesMut::new(),
+        }
+    }
+
+    pub async fn buffer(&mut self) -> Result<Option<usize>, E> {
+        match self.stream.next().await {
+            Some(Ok(bytes)) => {
+                self.buffer.extend_from_slice(&bytes);
+                Ok(Some(bytes.len()))
+            }
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
+        }
+    }
+}
+
+impl<E: StdError> Stream for BytesStreamBuffer<E> {
+    type Item = Result<Bytes, E>;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        if self.buffer.len() > 0 {
+            let bytes = self.buffer.clone().freeze();
+            self.buffer.clear();
+            Poll::Ready(Some(Ok(bytes)))
+        } else {
+            Pin::new(&mut self.stream).poll_next(cx)
+        }
+    }
+}
+

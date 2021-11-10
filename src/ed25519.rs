@@ -10,6 +10,7 @@ use std::error::Error as StdError;
 use std::ops::Deref;
 use std::pin::Pin;
 use std::str::FromStr;
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Privkey([u8; 32]);
@@ -56,6 +57,10 @@ impl Privkey {
 
     pub fn new(key: [u8; 32]) -> Self {
         Privkey(key)
+    }
+
+    pub fn to_chacha20_key(&self) -> chacha20::Key {
+        chacha20::Key::clone_from_slice(self.as_slice())
     }
 }
 
@@ -165,6 +170,18 @@ pub enum VerifyError<E: StdError> {
     Incorrect,
 }
 
+impl<E: StdError> Display for VerifyError<E> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        use VerifyError::*;
+        match self {
+            Stream(err) => write!(f, "{}", err),
+            Incorrect => write!(f, "ed25519 signature validation incorrect"),
+        }
+    }
+}
+
+impl<E: StdError> StdError for VerifyError<E> {}
+
 pub enum VerifyStreamState {
     Start(Sha512, BytesMut),
     Valid,
@@ -174,14 +191,14 @@ pub enum VerifyStreamState {
 
 impl<E: StdError> VerifyStream<E> {
     /// Create a new VerifyStream instance from an existing public key and stream.
-    pub fn new(
+    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(
         pubkey: &Pubkey,
-        stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
+        stream: S,
     ) -> VerifyStream<E> {
         VerifyStream {
             pubkey: pubkey.clone(),
             hasher: Sha512::new(),
-            stream,
+            stream: Box::pin(stream),
             verification: None,
             buffer: BytesMut::with_capacity(SIGNATURE_LENGTH),
             queue: None,
