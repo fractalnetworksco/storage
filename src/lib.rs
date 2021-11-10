@@ -131,8 +131,9 @@ impl Storage for Url {
             .unwrap();
         let header = header.to_bytes();
         let header_stream = tokio_stream::once(Ok(Bytes::from(header)));
-        let stream = header_stream.chain(ReaderStream::new(data));
-        let stream = EncryptionStream::new(stream, &volume.to_chacha20_key());
+        let data_stream = ReaderStream::new(data);
+        let stream = EncryptionStream::new(data_stream, &volume.to_chacha20_key());
+        let stream = header_stream.chain(stream);
         let signed_stream = SignStream::new(stream, volume);
         let response = client
             .post(url)
