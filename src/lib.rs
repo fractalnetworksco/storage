@@ -61,7 +61,7 @@ pub trait Storage {
     ) -> Result<
         (
             SnapshotHeader,
-            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>,
+            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>> + Sync + Send>>,
         ),
         Error,
     >;
@@ -155,7 +155,7 @@ impl Storage for Url {
     ) -> Result<
         (
             SnapshotHeader,
-            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>,
+            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>> + Sync + Send>>,
         ),
         Error,
     > {
