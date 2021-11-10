@@ -2,17 +2,17 @@ pub mod chacha20;
 pub mod ed25519;
 mod types;
 
+use crate::chacha20::{DecryptionStream, EncryptionStream};
 pub use crate::types::*;
 use async_trait::async_trait;
 use bytes::Bytes;
-use crate::chacha20::{EncryptionStream, DecryptionStream};
 use ed25519::*;
+use futures::Stream;
 use reqwest::{Body, Client, Error};
 use std::pin::Pin;
 use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
-use futures::Stream;
 use url::Url;
 
 #[async_trait]

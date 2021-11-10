@@ -7,10 +7,10 @@ use futures::task::Context;
 use futures::task::Poll;
 use rand_core::OsRng;
 use std::error::Error as StdError;
+use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::ops::Deref;
 use std::pin::Pin;
 use std::str::FromStr;
-use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[derive(Clone, Copy, Debug)]
 pub struct Privkey([u8; 32]);

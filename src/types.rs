@@ -6,9 +6,9 @@ use futures::task::Context;
 use futures::task::Poll;
 use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
+use std::error::Error as StdError;
 use std::io::Cursor;
 use std::pin::Pin;
-use std::error::Error as StdError;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
 
@@ -118,18 +118,17 @@ impl<E: StdError> Stream for HeaderStream<E> {
                             // know that the size fits. if there was any other error
                             // error reason, we have to create our own error type and
                             // wrap E.
-                            self.state = HeaderStreamState::Read(SnapshotHeader::from_bytes(&buffer).unwrap());
+                            self.state = HeaderStreamState::Read(
+                                SnapshotHeader::from_bytes(&buffer).unwrap(),
+                            );
                             Poll::Ready(Some(Ok(bytes)))
                         }
                     }
                     result => result,
                 }
             }
-            HeaderStreamState::Read(_) => {
-                result
-            }
+            HeaderStreamState::Read(_) => result,
         }
-
     }
 }
 
@@ -171,4 +170,3 @@ impl<E: StdError> Stream for BytesStreamBuffer<E> {
         }
     }
 }
-
