@@ -58,7 +58,13 @@ pub trait Storage {
         volume: &Privkey,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<(SnapshotHeader, Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>), Error>;
+    ) -> Result<
+        (
+            SnapshotHeader,
+            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>,
+        ),
+        Error,
+    >;
 }
 
 #[async_trait]
@@ -146,7 +152,13 @@ impl Storage for Url {
         volume: &Privkey,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<(SnapshotHeader, Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>), Error> {
+    ) -> Result<
+        (
+            SnapshotHeader,
+            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>>>>,
+        ),
+        Error,
+    > {
         let url = self
             .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
             .unwrap();
