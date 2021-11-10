@@ -392,10 +392,7 @@ async fn verify_missing_stream() {
     let key = Privkey::generate().pubkey();
     let data1: Bytes = "this is some short test".into();
     let data2: Bytes = "data that is used to assess".into();
-    let stream = futures::stream::iter(vec![
-       Ok(data1.clone()),
-       Ok(data2.clone()),
-    ]);
+    let stream = futures::stream::iter(vec![Ok(data1.clone()), Ok(data2.clone())]);
     let mut stream = VerifyStream::<std::io::Error>::new(&key, Box::pin(stream));
 
     let result = stream.next().await.unwrap();
@@ -417,10 +414,7 @@ async fn verify_correct_stream() {
 
     let data1: Bytes = "this is some short test".into();
     let data2: Bytes = "data that is used to assess".into();
-    let stream = futures::stream::iter(vec![
-       Ok(data1.clone()),
-       Ok(data2.clone()),
-    ]);
+    let stream = futures::stream::iter(vec![Ok(data1.clone()), Ok(data2.clone())]);
     let stream = SignStream::<std::io::Error>::new(stream, &privkey);
     let mut stream = VerifyStream::<std::io::Error>::new(&pubkey, Box::pin(stream));
 
