@@ -106,7 +106,6 @@ impl<E: StdError> Stream for DecryptionStream<E> {
         match &mut self.state {
             Start(key, nonce) => match result {
                 Poll::Ready(Some(Ok(mut bytes))) => {
-                    println!("nonce len is: {}", nonce.len());
                     let nonce_data = bytes.split_to((24 - nonce.len()).min(bytes.len()));
                     nonce.put(nonce_data);
                     if nonce.len() == 24 {
