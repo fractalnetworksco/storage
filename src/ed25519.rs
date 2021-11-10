@@ -276,7 +276,11 @@ impl<E: StdError> Stream for VerifyStream<E> {
                     .verify_prehashed(self.hasher.clone(), None, &signature)
                     .is_ok();
                 self.verification = Some(result);
-                Poll::Ready(None)
+                if !result {
+                    Poll::Ready(Some(Err(VerifyError::Incorrect)))
+                } else {
+                    Poll::Ready(None)
+                }
             }
             Poll::Pending => Poll::Pending,
         }
@@ -425,6 +429,74 @@ async fn verify_correct_stream() {
 
     let result = stream.next().await.unwrap();
     assert_eq!(result.unwrap().len(), data1.len() + data2.len());
+
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn verify_incorrect_stream() {
+    use futures::StreamExt;
+    let privkey = Privkey::generate();
+    let pubkey = Privkey::generate().pubkey();
+
+    let data1: Bytes = "this is some short test".into();
+    let data2: Bytes = "data that is used to assess".into();
+    let stream = futures::stream::iter(vec![Ok(data1.clone()), Ok(data2.clone())]);
+    let stream = SignStream::<std::io::Error>::new(stream, &privkey);
+    let mut stream = VerifyStream::<std::io::Error>::new(&pubkey, Box::pin(stream));
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), data1.len() + data2.len());
+
+    // error because signature is invalid
+    let result = stream.next().await.unwrap();
+    assert!(result.is_err());
+
+    assert!(stream.next().await.is_none());
+}
+
+#[cfg(test)]
+#[tokio::test]
+async fn verify_corrupt_stream() {
+    use futures::StreamExt;
+    let privkey = Privkey::generate();
+    let pubkey = privkey.pubkey();
+
+    let data1: Bytes = "this is some short test".into();
+    let data2: Bytes = "data that is used to assess".into();
+    let stream = futures::stream::iter(vec![Ok(data1.clone()), Ok(data2.clone())]);
+    let mut stream = SignStream::<std::io::Error>::new(stream, &privkey);
+    let mut data = vec![];
+    while let Some(item) = stream.next().await {
+        if data.len() > 0 {
+            data.push(item);
+        } else {
+            // corrupt some data
+            let mut item: BytesMut = item.unwrap().chunk().into();
+            item[0] = 56;
+            data.push(Ok(item.freeze()));
+        }
+    }
+    let stream = futures::stream::iter(data);
+    let mut stream = VerifyStream::<std::io::Error>::new(&pubkey, Box::pin(stream));
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), 0);
+
+    let result = stream.next().await.unwrap();
+    assert_eq!(result.unwrap().len(), data1.len() + data2.len());
+
+    // error because signature is invalid
+    let result = stream.next().await.unwrap();
+    assert!(result.is_err());
 
     assert!(stream.next().await.is_none());
 }
