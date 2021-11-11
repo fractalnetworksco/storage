@@ -102,10 +102,10 @@ docker:
   dependencies:
     - build:amd64
     - build:arm
-  image: docker
+  image: docker:18.09
   stage: deploy
   services:
-    - docker:dind
+    - docker:18.09-dind
   script:
     - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
     - docker build . -t "$CI_REGISTRY_IMAGE:latest"
