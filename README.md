@@ -14,5 +14,6 @@ There are two types of snapshots:
   advantage that they can be used to restore the entire volume from scratch.
   The downside is that they take up a lot of storage, roughly as much as there
   is data in the volume, plus metadata.
-- Partial or incremental snapshots only store the change of state between
+- Partial or incremental snapshots only store the change of state between two
+  versions
 
