@@ -3,7 +3,6 @@ image: rustlang/rust:nightly
 # make sure CI pulls submodules
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  DOCKER_TLS_CERTDIR: ""
 
 # set up cache to speed up builds
 cache:
