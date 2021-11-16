@@ -71,7 +71,7 @@ build:arm64:
     - cargo build --release --target aarch64-unknown-linux-gnu --bin client --features client
   artifacts:
     paths:
-      - target/aarch64-unknown-linux-gnurelease/client
+      - target/aarch64-unknown-linux-gnu/release/client
     expire_in: 1 week
 
 # generate rust html documentation
