@@ -1,6 +1,25 @@
-e# Storage API
+# Storage API
 
-This Rust project hosts a storage API that we use as the backend for our
+This Rust project hosts the storage API, which implements a fully end-to-end
+encrypted and signed blob storage with metadata. Currently, the metadata is
+stored inside of an SQLite database, and the data on disk, however in the
+future this will support different backends (S3-compatible, filecoin, etc).
+
+Builds:
+- [storage-master-amd64][] ([signature][storage-master-amd64.sig])
+- [storage-master-arm64][] ([signature][storage-master-arm64.sig])
+- [storage-master-arm32][] ([signature][storage-master-arm32.sig])
+
+Containers:
+- [`registry.gitlab.com/fractalnetworks/storage`][registry]
+
+Resources:
+- [Source Documentation][rustdoc]
+- [API Documentation][openapi] (TODO)
+
+## Background
+
+We use this as the backend for our
 volume management. During normal operation, the docker driver periodically
 snapshots the volumes and pushes the data to the storage API.
 
@@ -16,4 +35,16 @@ There are two types of snapshots:
   is data in the volume, plus metadata.
 - Partial or incremental snapshots only store the change of state between two
   versions
+
+[storage-master-amd64]: https://fractalnetworks.gitlab.io/storage/storage-master-amd64
+[storage-master-arm64]: https://fractalnetworks.gitlab.io/storage/storage-master-arm64
+[storage-master-arm32]: https://fractalnetworks.gitlab.io/storage/storage-master-arm32
+
+[storage-master-amd64.sig]: https://fractalnetworks.gitlab.io/storage/storage-master-amd64.sig
+[storage-master-arm64.sig]: https://fractalnetworks.gitlab.io/storage/storage-master-arm64.sig
+[storage-master-arm32.sig]: https://fractalnetworks.gitlab.io/storage/storage-master-arm32.sig
+
+[rustdoc]: https://fractalnetworks.gitlab.io/storage/doc/storage
+[openapi]: https://fractalnetworks.gitlab.io/storage/api
+[registry]: https://gitlab.com/fractalnetworks/storage/container_registry
 
