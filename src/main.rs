@@ -13,7 +13,7 @@ pub enum Storage {
     #[cfg(feature = "backend-local")]
     Local(StorageLocal),
     #[cfg(feature = "backend-s3")]
-    S3(StorageS3)
+    S3(StorageS3),
 }
 
 impl Storage {
@@ -28,7 +28,7 @@ impl Storage {
 #[derive(StructOpt, Clone, Debug)]
 pub struct StorageLocal {
     #[structopt(long, short)]
-    path: PathBuf
+    path: PathBuf,
 }
 
 #[derive(StructOpt, Clone, Debug)]
