@@ -18,7 +18,7 @@ pub fn snapshot_size_max() -> ByteUnit {
 #[post("/snapshot/<volume>/create")]
 async fn volume_create(pool: &State<SqlitePool>, options: &State<Options>, volume: Pubkey) -> () {
     Volume::create(pool, &volume).await.unwrap();
-    let path = options.storage.join(volume.to_hex());
+    let path = options.storage.path().join(volume.to_hex());
     tokio::fs::create_dir_all(path).await.unwrap();
     ()
 }
@@ -49,7 +49,7 @@ async fn snapshot_upload(
 
     // write data stream to file
     let header_path = header.path(volume.pubkey());
-    let path = options.storage.join(header_path.clone());
+    let path = options.storage.path().join(header_path.clone());
     let mut file = File::create(&path).await.unwrap();
     data.stream_to(tokio::io::BufWriter::new(&mut file)).await?;
     // TODO: generate hash to check signature
@@ -105,7 +105,7 @@ async fn snapshot_fetch(
         .await
         .unwrap()
         .unwrap();
-    let path = options.storage.join(snapshot.file());
+    let path = options.storage.path().join(snapshot.file());
     let file = File::open(path).await.unwrap();
     ReaderStream::one(file)
 }
