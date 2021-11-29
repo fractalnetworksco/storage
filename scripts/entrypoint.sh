@@ -7,4 +7,4 @@ mkdir -p $STORAGE_PATH
 touch $STORAGE_DATABASE
 
 # launch storage microservice
-storage --database $STORAGE_DATABASE --storage $STORAGE_PATH
+storage --database $STORAGE_DATABASE local --path $STORAGE_PATH
