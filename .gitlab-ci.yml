@@ -16,10 +16,11 @@ before_script:
 stages:
   - test
   - build
+  - publish
   - deploy
 
 # make sure that formatting is correct.
-rustfmt:
+check-formatting:
   image: registry.gitlab.com/fractalnetworks/images/rust:stable
   stage: test
   allow_failure: true
@@ -27,12 +28,22 @@ rustfmt:
     - cargo fmt -- --check
 
 # make sure there are no issues with the code.
-clippy:
+check-mistakes:
   image: registry.gitlab.com/fractalnetworks/images/rust:stable
   stage: test
   allow_failure: true
   script:
     - cargo clippy
+
+# when pushing a tag, make sure that the tag version
+# matches the version set in the Cargo.toml file.
+check-version:
+  image: debian:11
+  stage: test
+  script:
+    - test $(sed -rn 's/^version = "(.+)"/v\1/p' Cargo.toml | head -n 1) = "$CI_COMMIT_TAG"
+  rules:
+    - if: $CI_COMMIT_TAG
 
 # run unit tests.
 test:
@@ -85,6 +96,20 @@ rustdoc:
       - target/doc
     expire_in: 1 week
 
+# build docker image
+docker:
+  dependencies:
+    - build:amd64
+  image: registry.gitlab.com/fractalnetworks/images/docker
+  stage: publish
+  services:
+    - docker:dind
+  script:
+    - ci-docker-build-push
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH
+
 # publish binary, docs and API docs to gitlab pages.
 pages:
   image: registry.gitlab.com/fractalnetworks/images/pages
@@ -97,29 +122,15 @@ pages:
   script:
     - mkdir public
     - mv target/doc public/doc
-    - mv target/release/storage public/storage-master-amd64
-    - sign public/storage-master-amd64
-    - mv target/arm-unknown-linux-gnueabihf/release/storage public/storage-master-arm32
-    - sign public/storage-master-arm32
-    - mv target/aarch64-unknown-linux-gnu/release/storage public/storage-master-arm64
-    - sign public/storage-master-arm64
+    - mv target/release/storage public/storage-amd64
+    - sign public/storage-amd64
+    - mv target/arm-unknown-linux-gnueabihf/release/storage public/storage-arm32
+    - sign public/storage-arm32
+    - mv target/aarch64-unknown-linux-gnu/release/storage public/storage-arm64
+    - sign public/storage-arm64
   artifacts:
     paths:
       - public
     expire_in: 1 week
   only:
-    - master
-
-docker:
-  dependencies:
-    - build:amd64
-  image: docker
-  stage: deploy
-  services:
-    - docker:dind
-  script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-    - docker build . -t "$CI_REGISTRY_IMAGE:latest"
-    - docker push "$CI_REGISTRY_IMAGE:latest"
-  only:
-    - master
+    - main
