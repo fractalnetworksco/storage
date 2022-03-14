@@ -3,10 +3,12 @@ mod db;
 mod info;
 mod keys;
 
+use fractal_auth_client::{key_store, AuthConfig, KeyStore};
 use rocket::fs::TempFile;
 use rocket::*;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+use url::Url;
 
 #[derive(StructOpt, Clone, Debug)]
 pub enum Storage {
@@ -43,8 +45,12 @@ pub struct StorageS3 {
 
 #[derive(StructOpt)]
 struct Options {
-    #[structopt(long, short)]
+    #[structopt(long, short, env = "STORAGE_DATABASE", global = true)]
     database: PathBuf,
+
+    #[structopt(long, env = "STORAGE_JWKS", global = true)]
+    jwks: Url,
+
     #[structopt(subcommand)]
     storage: Storage,
 }
@@ -77,10 +83,16 @@ async fn main() {
         return;
     }
 
+    let jwks = options.jwks.to_string();
+    info!("Fetching JWKS from {}", &jwks);
+    let key_store = key_store(&jwks).await.unwrap();
+    let mut auth_config = AuthConfig::new(key_store);
+
     rocket::build()
         .mount("/", api::routes())
         .manage(pool)
         .manage(options)
+        .manage(auth_config)
         .launch()
         .await
         .unwrap();

@@ -19,6 +19,8 @@ log = "0.4.14"
 byteorder = "1.4.3"
 storage-api = { git = "https://gitlab.com/fractalnetworks/storage-api" }
 rust-s3 = { version = "0.28.0", default-features = false, features = ["tokio-rustls-tls", "tags"], optional = true }
+fractal-auth-client = { git = "https://gitlab.com/fractalnetworks/fractal-auth-client", branch = "v0.1", features = ["rocket"] }
+url = "2.2.2"
 
 [features]
 default = ["backend-local", "backend-s3"]
