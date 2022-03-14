@@ -1,17 +1,9 @@
-# make sure CI pulls submodules
-variables:
-  GIT_SUBMODULE_STRATEGY: recursive
-
 # set up cache to speed up builds
 cache:
   key: $CI_COMMIT_REF_SLUG
   paths:
     - .cargo/
     - .cache/sccache
-
-before_script:
-  - export CARGO_HOME="${PWD}/.cargo"
-  - export SCCACHE_DIR="${PWD}/.cache/sccache"
 
 stages:
   - test
@@ -21,19 +13,32 @@ stages:
 
 # make sure that formatting is correct.
 check-formatting:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: test
   allow_failure: true
   script:
+    - source ci-setup-cargo
     - cargo fmt -- --check
+  interruptible: true
 
 # make sure there are no issues with the code.
 check-mistakes:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: test
   allow_failure: true
   script:
+    - source ci-setup-cargo
     - cargo clippy
+  interruptible: true
+
+# run unit tests.
+test:
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
+  stage: test
+  script:
+    - source ci-setup-cargo
+    - cargo test
+  interruptible: true
 
 # when pushing a tag, make sure that the tag version
 # matches the version set in the Cargo.toml file.
@@ -45,62 +50,63 @@ check-version:
   rules:
     - if: $CI_COMMIT_TAG
 
-# run unit tests.
-test:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
-  stage: test
-  script:
-    - cargo test
-
 # generate release build
 build:amd64:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: build
   script:
+    - source ci-setup-cargo
     - cargo build --release
   artifacts:
     paths:
       - target/release/storage
     expire_in: 1 week
+  interruptible: true
 
 # build for arm target
 build:arm32:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable-arm32
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable-arm32:v1
   stage: build
   script:
+    - source ci-setup-cargo
     - cargo build --release --target arm-unknown-linux-gnueabihf
   artifacts:
     paths:
       - target/arm-unknown-linux-gnueabihf/release/storage
     expire_in: 1 week
+  interruptible: true
 
 # build for arm target
 build:arm64:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable-arm64
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable-arm64:v1
   stage: build
   script:
+    - source ci-setup-cargo
     - cargo build --release --target aarch64-unknown-linux-gnu
   artifacts:
     paths:
       - target/aarch64-unknown-linux-gnu/release/storage
     expire_in: 1 week
+  interruptible: true
 
 # generate rust html documentation
 rustdoc:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: build
   script:
+    - source ci-setup-cargo
     - cargo doc --no-deps
   artifacts:
     paths:
       - target/doc
     expire_in: 1 week
+  interruptible: true
 
 # build docker image
 docker:
   dependencies:
     - build:amd64
-  image: registry.gitlab.com/fractalnetworks/images/docker
+  image: registry.gitlab.com/fractalnetworks/images/docker:v1
   stage: publish
   services:
     - docker:dind
@@ -112,8 +118,8 @@ docker:
 
 # publish binary, docs and API docs to gitlab pages.
 pages:
-  image: registry.gitlab.com/fractalnetworks/images/pages
-  stage: deploy
+  image: registry.gitlab.com/fractalnetworks/images/pages:v1
+  stage: publish
   dependencies:
     - build:amd64
     - build:arm64
