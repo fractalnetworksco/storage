@@ -1,3 +1,0 @@
-[submodule "storage-api"]
-	path = storage-api
-	url = ../storage-api.git
