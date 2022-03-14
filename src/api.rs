@@ -23,14 +23,14 @@ async fn volume_create(pool: &State<SqlitePool>, options: &State<Options>, volum
     ()
 }
 
-#[post("/snapshot/<volume_pubkey>/upload", data = "<data>")]
+#[post("/snapshot/<volume>/upload", data = "<data>")]
 async fn snapshot_upload(
     mut data: Data<'_>,
     pool: &State<SqlitePool>,
     options: &State<Options>,
-    volume_pubkey: Pubkey,
+    volume: Pubkey,
 ) -> std::io::Result<Json<SnapshotInfo>> {
-    let volume = Volume::lookup(pool, &volume_pubkey).await.unwrap().unwrap();
+    let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
 
     // parse header from snapshot data
     let header = data.peek(SNAPSHOT_HEADER_SIZE).await;
