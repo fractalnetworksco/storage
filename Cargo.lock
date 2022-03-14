@@ -2072,6 +2072,7 @@ dependencies = [
 [[package]]
 name = "storage-api"
 version = "0.1.0"
+source = "git+https://gitlab.com/fractalnetworks/storage-api#0019d991292e30b5bb40282acb9068289234e79c"
 dependencies = [
  "anyhow",
  "async-trait",
