@@ -1,3 +1,4 @@
+use crate::keys::{Pubkey, Secret};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::{Bytes, BytesMut};
 use futures::stream::Stream;
@@ -7,8 +8,29 @@ use serde::{Deserialize, Serialize};
 use std::error::Error as StdError;
 use std::io::Cursor;
 use std::pin::Pin;
+use uuid::Uuid;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SnapshotHeaderV2 {
+    /// Time that this snapshot was created.
+    pub creation: u64,
+    /// Machine that this snapshot was created on.
+    pub machine: Uuid,
+    /// Size of this snapshot, in bytes.
+    pub size: u64,
+    /// Size of this snapshot and the previous ones.
+    pub size_total: u64,
+    /// Volume of parent snapshot (if different).
+    pub parent_volume: Option<Pubkey>,
+    /// Hash of parent snapshot (if not root snapshot).
+    pub parent_hash: Option<Vec<u8>>,
+    /// Decryption key of parent snapshot (if needed), xored with current decryption key.
+    pub parent_key: Option<Secret>,
+    /// IPFS CID of data.
+    pub data: String,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct SnapshotInfo {
