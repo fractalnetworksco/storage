@@ -1,5 +1,5 @@
 use bytes::{Buf, Bytes, BytesMut};
-use ed25519_dalek::{
+use ed25519_dalek_fiat::{
     Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, Signature, SIGNATURE_LENGTH,
 };
 use futures::stream::Stream;
@@ -11,83 +11,15 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::ops::Deref;
 use std::pin::Pin;
 use std::str::FromStr;
+use wireguard_keys::{Privkey, Pubkey};
 
-#[derive(Clone, Copy, Debug)]
-pub struct Privkey([u8; 32]);
-
-#[derive(Clone, Copy, Debug)]
-pub struct Pubkey([u8; 32]);
-
-impl Pubkey {
-    pub fn to_hex(&self) -> String {
-        hex::encode(&self.0)
-    }
-
-    pub fn as_slice(&self) -> &[u8] {
-        &self.0[..]
-    }
-
-    pub fn new(key: [u8; 32]) -> Self {
-        Pubkey(key)
-    }
+pub trait ToChaCha20 {
+    fn to_chacha20_key(&self) -> chacha20::Key;
 }
 
-impl Deref for Pubkey {
-    type Target = [u8];
-    fn deref(&self) -> &Self::Target {
-        &self.0[..]
-    }
-}
-
-impl Privkey {
-    pub fn generate() -> Self {
-        let secret_key = SecretKey::generate(&mut OsRng);
-        Privkey(secret_key.to_bytes())
-    }
-
-    pub fn pubkey(&self) -> Pubkey {
-        let secret_key = SecretKey::from_bytes(&self.0).unwrap();
-        let public_key: PublicKey = (&secret_key).into();
-        Pubkey(public_key.to_bytes())
-    }
-
-    pub fn as_slice(&self) -> &[u8] {
-        &self.0[..]
-    }
-
-    pub fn new(key: [u8; 32]) -> Self {
-        Privkey(key)
-    }
-
-    pub fn to_chacha20_key(&self) -> chacha20::Key {
+impl ToChaCha20 for Privkey {
+    fn to_chacha20_key(&self) -> chacha20::Key {
         chacha20::Key::clone_from_slice(self.as_slice())
-    }
-}
-
-impl Deref for Privkey {
-    type Target = [u8];
-    fn deref(&self) -> &Self::Target {
-        &self.0[..]
-    }
-}
-
-impl FromStr for Privkey {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let data = base64::decode(s)?;
-        Ok(Privkey(data.try_into().unwrap()))
-    }
-}
-
-impl std::fmt::Display for Privkey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", base64::encode(&self.0))
-    }
-}
-
-impl std::fmt::Display for Pubkey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", base64::encode(&self.0))
     }
 }
 
@@ -134,7 +66,7 @@ impl<E: StdError> Stream for SignStream<E> {
             Poll::Ready(Some(Err(error))) => self.eof = true,
             Poll::Ready(None) => {
                 self.eof = true;
-                let secret_key = SecretKey::from_bytes(&self.privkey.0).unwrap();
+                let secret_key = SecretKey::from_bytes(self.privkey.as_slice()).unwrap();
                 let public_key: PublicKey = (&secret_key).into();
                 let secret_key: ExpandedSecretKey = (&secret_key).into();
                 let result = secret_key.sign_prehashed(self.hasher.clone(), &public_key, None);
@@ -288,7 +220,7 @@ impl<E: StdError> Stream for VerifyStream<E> {
                 self.buffer.copy_to_slice(&mut signature);
                 let signature = Signature::new(signature);
 
-                let pubkey = PublicKey::from_bytes(&self.pubkey.0).unwrap();
+                let pubkey = PublicKey::from_bytes(self.pubkey.as_slice()).unwrap();
                 let result = pubkey
                     .verify_prehashed(self.hasher.clone(), None, &signature)
                     .is_ok();

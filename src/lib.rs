@@ -14,6 +14,7 @@ use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
 use url::Url;
+use wireguard_keys::{Privkey, Pubkey};
 
 #[async_trait]
 pub trait Storage {
