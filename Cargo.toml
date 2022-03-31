@@ -23,6 +23,7 @@ chacha20 = "0.8.0"
 wireguard-keys = "0.1.0"
 rand_core = { version = "0.5", features = ["getrandom"] }
 ed25519-dalek-fiat = "0.1.0"
+blake2 = "0.10.4"
 
 [features]
 default = ["tokio", "tokio-util/io", "tokio-stream"]

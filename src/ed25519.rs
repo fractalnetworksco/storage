@@ -1,3 +1,4 @@
+use blake2::{Blake2s256, Digest as Blake2Digest};
 use bytes::{Buf, Bytes, BytesMut};
 use ed25519_dalek_fiat::{
     Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, Signature, SIGNATURE_LENGTH,
@@ -5,12 +6,9 @@ use ed25519_dalek_fiat::{
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
-use rand_core::OsRng;
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::ops::Deref;
 use std::pin::Pin;
-use std::str::FromStr;
 use wireguard_keys::{Privkey, Pubkey};
 
 pub trait ToChaCha20 {
@@ -19,7 +17,10 @@ pub trait ToChaCha20 {
 
 impl ToChaCha20 for Privkey {
     fn to_chacha20_key(&self) -> chacha20::Key {
-        chacha20::Key::clone_from_slice(self.as_slice())
+        let mut hasher = Blake2s256::new();
+        hasher.update(self.as_slice());
+        let output = hasher.finalize();
+        chacha20::Key::clone_from_slice(&output)
     }
 }
 
@@ -161,7 +162,7 @@ impl<E: StdError> Stream for VerifyStream<E> {
             return Poll::Ready(Some(Ok(queue)));
         }
 
-        let mut result = Pin::new(&mut self.stream).poll_next(cx);
+        let result = Pin::new(&mut self.stream).poll_next(cx);
         match result {
             Poll::Ready(Some(Ok(mut bytes))) => {
                 // if we haven't gotten a full signature yet, just read and keep pending.
@@ -218,7 +219,13 @@ impl<E: StdError> Stream for VerifyStream<E> {
 
                 let mut signature = [0; SIGNATURE_LENGTH];
                 self.buffer.copy_to_slice(&mut signature);
-                let signature = Signature::new(signature);
+                let signature = match Signature::from_bytes(&signature) {
+                    Ok(signature) => signature,
+                    Err(_) => {
+                        self.verification = Some(false);
+                        return Poll::Ready(Some(Err(VerifyError::Incorrect)));
+                    }
+                };
 
                 let pubkey = PublicKey::from_bytes(self.pubkey.as_slice()).unwrap();
                 let result = pubkey
