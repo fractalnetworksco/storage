@@ -8,7 +8,6 @@ use rand_core::{OsRng, RngCore};
 use rocket::request::FromParam;
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
-#[cfg(feature = "serde")]
 use serde::{
     de::{Error, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -62,7 +61,6 @@ impl_base64!(Pubkey);
 #[cfg(feature = "base32")]
 impl_base32!(Pubkey);
 impl_parse!(Pubkey);
-#[cfg(feature = "serde")]
 impl_serde!(Pubkey, "WireGuard public key");
 #[cfg(feature = "rocket")]
 impl_rocket!(Pubkey);
@@ -116,7 +114,6 @@ impl_base64!(Privkey);
 #[cfg(feature = "base32")]
 impl_base32!(Privkey);
 impl_parse!(Privkey);
-#[cfg(feature = "serde")]
 impl_serde!(Privkey, "WireGuard private key");
 #[cfg(feature = "rocket")]
 impl_rocket!(Privkey);
@@ -185,7 +182,6 @@ impl_base64!(Secret);
 #[cfg(feature = "base32")]
 impl_base32!(Secret);
 impl_parse!(Secret);
-#[cfg(feature = "serde")]
 impl_serde!(Secret, "WireGuard preshared key");
 #[cfg(feature = "rocket")]
 impl_rocket!(Secret);

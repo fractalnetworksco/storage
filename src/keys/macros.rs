@@ -1,4 +1,3 @@
-#[cfg(feature = "serde")]
 macro_rules! impl_serde {
     ($type:ty, $mesg:literal) => {
         impl Serialize for $type {
