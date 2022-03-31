@@ -1,8 +1,10 @@
 pub mod chacha20;
 pub mod ed25519;
+pub mod keys;
 mod types;
 
 use crate::chacha20::{DecryptionStream, EncryptionStream};
+use crate::keys::{Privkey, Pubkey};
 pub use crate::types::*;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -14,7 +16,6 @@ use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
 use url::Url;
-use wireguard_keys::{Privkey, Pubkey};
 
 #[async_trait]
 pub trait Storage {

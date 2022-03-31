@@ -170,6 +170,7 @@ impl Options {
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     let options = Options::from_args();
     match options.run().await {
         Ok(_) => {}

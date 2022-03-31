@@ -1,3 +1,4 @@
+use crate::keys::{Privkey, Pubkey};
 use blake2::{Blake2s256, Digest as Blake2Digest};
 use bytes::{Buf, Bytes, BytesMut};
 use ed25519_dalek_fiat::{
@@ -6,10 +7,10 @@ use ed25519_dalek_fiat::{
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
+use log::*;
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::pin::Pin;
-use wireguard_keys::{Privkey, Pubkey};
 
 pub trait ToChaCha20 {
     fn to_chacha20_key(&self) -> chacha20::Key;
@@ -56,24 +57,37 @@ impl<E: StdError> Stream for SignStream<E> {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if self.eof {
+            debug!("SignStream: sending eof");
             return Poll::Ready(None);
         }
 
         let result = Pin::new(&mut self.stream).poll_next(cx);
         match &result {
             Poll::Ready(Some(Ok(bytes))) => {
+                debug!("SignStream data: {:?}", bytes);
                 self.hasher.update(bytes);
             }
-            Poll::Ready(Some(Err(error))) => self.eof = true,
+            Poll::Ready(Some(Err(error))) => {
+                debug!("SignStream: got error {:?}", error);
+                self.eof = true
+            }
             Poll::Ready(None) => {
+                debug!("SignStream: stream done, generating signature");
                 self.eof = true;
                 let secret_key = SecretKey::from_bytes(self.privkey.as_slice()).unwrap();
                 let public_key: PublicKey = (&secret_key).into();
                 let secret_key: ExpandedSecretKey = (&secret_key).into();
+
+                // log hash if built in debug mode
+                #[cfg(debug_assertions)]
+                debug!("SignStream: got hash {:?}", self.hasher.clone().finalize());
+
                 let result = secret_key.sign_prehashed(self.hasher.clone(), &public_key, None);
                 match result {
                     Ok(signature) => {
-                        return Poll::Ready(Some(Ok(Bytes::from(signature.to_bytes().to_vec()))))
+                        let signature = signature.to_bytes().to_vec();
+                        debug!("SignStream: got signature {:?}", &signature);
+                        return Poll::Ready(Some(Ok(Bytes::from(signature))));
                     }
                     Err(error) => unimplemented!(),
                 }
@@ -97,9 +111,11 @@ pub struct VerifyStream<E: StdError> {
     state: VerifyStreamState,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum VerifyError<E: StdError> {
     Stream(E),
+    Length,
+    Invalid(ed25519_dalek_fiat::ed25519::Error),
     Incorrect,
 }
 
@@ -107,8 +123,10 @@ impl<E: StdError> Display for VerifyError<E> {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         use VerifyError::*;
         match self {
-            Stream(err) => write!(f, "{}", err),
+            Stream(error) => write!(f, "{}", error),
             Incorrect => write!(f, "ed25519 signature validation incorrect"),
+            Invalid(error) => write!(f, "invalid ed25519 signature: {:?}", error),
+            Length => write!(f, "ed25519 signature missing"),
         }
     }
 }
@@ -154,6 +172,7 @@ impl<E: StdError> Stream for VerifyStream<E> {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         // if the verification is done, stop passing through data
         if self.verification.is_some() {
+            debug!("VerifyStream: done, returning none");
             return Poll::Ready(None);
         }
 
@@ -191,7 +210,9 @@ impl<E: StdError> Stream for VerifyStream<E> {
                     }
 
                     // hash new data
+                    debug!("VerifyStream: hashing {:?}", retval);
                     self.hasher.update(&retval);
+                    debug!("VerifyStream: hashing {:?}", bytes);
                     self.hasher.update(&bytes);
 
                     // return previous buffer
@@ -203,6 +224,7 @@ impl<E: StdError> Stream for VerifyStream<E> {
                     self.buffer.extend_from_slice(&buffer_fragment);
                     self.buffer.extend_from_slice(&bytes);
 
+                    debug!("VerifyStream: hashing {:?}", retval);
                     self.hasher.update(&retval);
                     Poll::Ready(Some(Ok(retval.freeze())))
                 }
@@ -212,20 +234,29 @@ impl<E: StdError> Stream for VerifyStream<E> {
                 Poll::Ready(Some(Err(VerifyError::Stream(error))))
             }
             Poll::Ready(None) => {
+                debug!("VerifyStream: stream closed, generating signature");
                 if self.buffer.len() < SIGNATURE_LENGTH {
                     self.verification = Some(false);
-                    return Poll::Ready(Some(Err(VerifyError::Incorrect)));
+                    return Poll::Ready(Some(Err(VerifyError::Length)));
                 }
 
                 let mut signature = [0; SIGNATURE_LENGTH];
                 self.buffer.copy_to_slice(&mut signature);
+                debug!("VerifyStream: got signature: {:?}", signature);
                 let signature = match Signature::from_bytes(&signature) {
                     Ok(signature) => signature,
-                    Err(_) => {
+                    Err(e) => {
                         self.verification = Some(false);
-                        return Poll::Ready(Some(Err(VerifyError::Incorrect)));
+                        return Poll::Ready(Some(Err(VerifyError::Invalid(e))));
                     }
                 };
+
+                // log hash if built in debug mode
+                #[cfg(debug_assertions)]
+                debug!(
+                    "VerifyStream: got hash {:?}",
+                    self.hasher.clone().finalize()
+                );
 
                 let pubkey = PublicKey::from_bytes(self.pubkey.as_slice()).unwrap();
                 let result = pubkey
