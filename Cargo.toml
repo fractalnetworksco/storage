@@ -7,10 +7,6 @@ edition = "2021"
 rocket = { version = "0.5.0-rc", features = ["json"] }
 structopt = "0.3.21"
 anyhow = "1.0.38"
-rand = "0.8.3"
-ed25519-dalek-fiat = "0.1.0"
-sha2 = "0.9.3"
-hex = "0.4.3"
 sqlx = { version = "0.5", features = [ "runtime-tokio-rustls", "sqlite" ] }
 env_logger = "0.8.3"
 serde = { version = "1.0.124", features = ["derive"] }
@@ -21,6 +17,7 @@ storage-api = { git = "https://gitlab.com/fractalnetworks/storage-api" }
 rust-s3 = { version = "0.28.0", default-features = false, features = ["tokio-rustls-tls", "tags"], optional = true }
 fractal-auth-client = { git = "https://gitlab.com/fractalnetworks/fractal-auth-client", branch = "v0.1", features = ["rocket"] }
 url = "2.2.2"
+wireguard-keys = { version = "0.1.0", features = ["rocket"] }
 
 [features]
 default = ["backend-local", "backend-s3"]

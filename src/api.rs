@@ -1,6 +1,5 @@
 use crate::db::Volume;
 use crate::info::{Snapshot, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
-use crate::keys::Pubkey;
 use crate::Options;
 use rocket::data::{ByteUnit, ToByteUnit};
 use rocket::fs::TempFile;
@@ -10,6 +9,7 @@ use rocket::*;
 use sqlx::{query, SqlitePool};
 use storage_api::SnapshotInfo;
 use tokio::fs::File;
+use wireguard_keys::Pubkey;
 
 pub fn snapshot_size_max() -> ByteUnit {
     1.terabytes()

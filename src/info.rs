@@ -1,5 +1,4 @@
 use crate::db::Volume;
-use crate::keys::Pubkey;
 use anyhow::Result;
 use byteorder::{BigEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
@@ -9,6 +8,7 @@ use std::ffi::OsString;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use storage_api::SnapshotInfo;
+use wireguard_keys::Pubkey;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 4 * 8;
 

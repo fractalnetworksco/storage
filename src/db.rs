@@ -1,10 +1,10 @@
 use crate::info::Snapshot;
-use crate::keys::Pubkey;
 use anyhow::Result;
 use sqlx::sqlite::SqliteRow;
 use sqlx::{query, Row, SqlitePool};
 use std::path::Path;
 use storage_api::SnapshotInfo;
+use wireguard_keys::Pubkey;
 
 #[derive(Clone, Debug)]
 pub struct Volume {
@@ -44,7 +44,7 @@ impl Volume {
         let key: &[u8] = row.try_get("volume_pubkey")?;
         Ok(Volume {
             id: id.try_into()?,
-            pubkey: Pubkey(key.try_into()?),
+            pubkey: Pubkey::try_from(key)?,
         })
     }
 
