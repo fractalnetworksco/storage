@@ -9,6 +9,7 @@ use tokio::fs::File;
 use tokio::io::stdin;
 use tokio::io::{AsyncRead, AsyncWriteExt};
 use url::Url;
+use wireguard_keys::Privkey;
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Options {
