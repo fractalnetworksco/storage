@@ -102,7 +102,7 @@ impl<E: StdError> Stream for DecryptionStream<E> {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         use DecryptionStreamState::*;
-        let mut result = Pin::new(&mut self.stream).poll_next(cx);
+        let result = Pin::new(&mut self.stream).poll_next(cx);
         match &mut self.state {
             Start(key, nonce) => match result {
                 Poll::Ready(Some(Ok(mut bytes))) => {
@@ -130,7 +130,7 @@ impl<E: StdError> Stream for DecryptionStream<E> {
                 result => result,
             },
             Stream(xchacha) => match result {
-                Poll::Ready(Some(Ok(mut bytes))) => {
+                Poll::Ready(Some(Ok(bytes))) => {
                     let mut bytes: BytesMut = bytes.chunk().into();
                     xchacha.apply_keystream(&mut bytes);
                     Poll::Ready(Some(Ok(bytes.freeze())))

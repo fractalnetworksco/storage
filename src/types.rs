@@ -1,10 +1,8 @@
-use crate::ed25519::VerifyStream;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::{Bytes, BytesMut};
-use futures::stream::{Stream, StreamExt};
+use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
-use reqwest::Error as ReqwestError;
 use serde::{Deserialize, Serialize};
 use std::error::Error as StdError;
 use std::io::Cursor;
