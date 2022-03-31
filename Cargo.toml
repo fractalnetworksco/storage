@@ -20,7 +20,7 @@ bytes = "1.1.0"
 futures = "0.3.13"
 log = "0.4.14"
 chacha20 = "0.8.0"
-wireguard-keys = { git = "https://gitlab.com/fractalnetworks/wireguard-keys", branch = "v0.1" }
+wireguard-keys = "0.1.0"
 rand_core = { version = "0.5", features = ["getrandom"] }
 ed25519-dalek-fiat = "0.1.0"
 
