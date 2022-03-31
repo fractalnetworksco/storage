@@ -3,13 +3,12 @@ use futures::StreamExt;
 use reqwest::{Client, ClientBuilder};
 use std::path::PathBuf;
 use std::pin::Pin;
-use storage_api::{ed25519::*, SnapshotHeader, Storage};
+use storage_api::{ed25519::*, keys::Privkey, SnapshotHeader, Storage};
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
 use tokio::io::{AsyncRead, AsyncWriteExt};
 use url::Url;
-use wireguard_keys::Privkey;
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct Options {
