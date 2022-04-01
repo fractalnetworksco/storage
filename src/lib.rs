@@ -6,15 +6,19 @@ mod types;
 use crate::chacha20::{DecryptionStream, EncryptionStream};
 use crate::keys::{Privkey, Pubkey};
 pub use crate::types::*;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use bytes::Bytes;
 use ed25519::*;
+use futures::stream::IntoAsyncRead;
 use futures::Stream;
+use futures::TryStreamExt;
+use ipfs_api::{IpfsApi, IpfsClient};
 use reqwest::{Body, Client, Error};
 use std::pin::Pin;
 use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
-use tokio_util::io::ReaderStream;
+use tokio_util::io::{ReaderStream, StreamReader};
 use url::Url;
 
 #[async_trait]
@@ -194,4 +198,20 @@ mod tests {
         let result = 2 + 2;
         assert_eq!(result, 4);
     }
+}
+
+pub async fn upload_ipfs(
+    api: &Url,
+    client: &Client,
+    ipfs: &IpfsClient,
+    volume: &Privkey,
+    header: &SnapshotHeader,
+    data: Pin<Box<dyn AsyncRead + Send + Sync>>,
+) -> Result<Option<SnapshotInfo>> {
+    let data_stream = ReaderStream::new(data);
+    let stream = EncryptionStream::new(data_stream, &volume.to_chacha20_key());
+    let mut reader = stream.into_async_read();
+    let cid = ipfs.add_async(reader).await;
+    println!("got cid: {:?}", cid);
+    Err(anyhow!("Not implemented"))
 }

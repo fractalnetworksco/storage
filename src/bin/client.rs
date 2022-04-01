@@ -1,5 +1,6 @@
 use anyhow::Result;
 use futures::StreamExt;
+use ipfs_api::IpfsClient;
 use reqwest::{Client, ClientBuilder};
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -32,6 +33,8 @@ pub enum Command {
     List(ListCommand),
     /// Upload a new snapshot.
     Upload(UploadCommand),
+    /// Upload a new snapshot using IPFS
+    UploadIpfs(UploadIpfsCommand),
     /// Fetch a snapshot.
     Fetch(FetchCommand),
 }
@@ -78,6 +81,21 @@ pub struct UploadCommand {
 }
 
 #[derive(StructOpt, Debug, Clone)]
+pub struct UploadIpfsCommand {
+    #[structopt(long, short = "k")]
+    privkey: Privkey,
+    #[structopt(long, short)]
+    generation: u64,
+    #[structopt(long, short)]
+    parent: Option<u64>,
+    #[structopt(long, short)]
+    creation: u64,
+
+    /// File to upload, if none specified, read from standard input.
+    file: Option<PathBuf>,
+}
+
+#[derive(StructOpt, Debug, Clone)]
 pub struct FetchCommand {
     #[structopt(long, short = "k")]
     privkey: Privkey,
@@ -91,6 +109,10 @@ pub struct FetchCommand {
 }
 
 impl Options {
+    pub fn ipfs(&self) -> Result<IpfsClient> {
+        Ok(IpfsClient::default())
+    }
+
     pub async fn run(&self) -> Result<()> {
         let client = ClientBuilder::new()
             .danger_accept_invalid_certs(self.insecure)
@@ -148,6 +170,31 @@ impl Options {
                     .await?;
 
                 println!("{:#?}", result);
+                Ok(())
+            }
+            Command::UploadIpfs(opts) => {
+                let header = SnapshotHeader {
+                    parent: opts.parent,
+                    generation: opts.generation,
+                    creation: opts.creation,
+                };
+
+                let input: Pin<Box<dyn AsyncRead + Send + Sync>> = match &opts.file {
+                    Some(file) => Box::pin(File::open(file).await?),
+                    None => Box::pin(stdin()),
+                };
+
+                let ipfs = self.ipfs()?;
+
+                storage_api::upload_ipfs(
+                    &self.server,
+                    &client,
+                    &ipfs,
+                    &opts.privkey,
+                    &header,
+                    input,
+                )
+                .await?;
                 Ok(())
             }
             Command::Fetch(opts) => {
