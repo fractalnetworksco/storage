@@ -13,7 +13,7 @@ use uuid::Uuid;
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SnapshotHeaderV2 {
+pub struct SnapshotManifest {
     /// Time that this snapshot was created.
     pub creation: u64,
     /// Machine that this snapshot was created on.
