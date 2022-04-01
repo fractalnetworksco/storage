@@ -215,3 +215,33 @@ pub async fn upload_ipfs(
     println!("got cid: {:?}", cid);
     Err(anyhow!("Not implemented"))
 }
+
+pub async fn fetch_ipfs(
+    api: &Url,
+    client: &Client,
+    ipfs: &IpfsClient,
+    volume: &Privkey,
+    hash: Option<Vec<u8>>,
+) -> Result<
+    (
+        SnapshotHeader,
+        Pin<Box<dyn Stream<Item = Bytes> + Sync + Send>>,
+    ),
+    Error,
+> {
+    // api request to get manifest
+    let url = api
+        .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
+        .unwrap();
+    let mut query = vec![];
+    if let Some(hash) = hash {
+        query.push(("hash", hex::encode(&hash)));
+    }
+    // get response
+    let response = client.get(url).query(&query).send().await?;
+    // parse the response into a SnapshotManifest
+    // pull CID out of snapshot manifest
+    let cid = "QmNrR8oEBeitvCqTugtH96JEo2wywBcqFb5bxsuhaBmML1";
+    let data = ipfs.cat(&cid);
+    unimplemented!()
+}
