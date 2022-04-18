@@ -200,22 +200,20 @@ mod tests {
     }
 }
 
+/// Upload a stream of data to IPFS, encrypted with the volume's encryption key.
 pub async fn upload_ipfs(
-    api: &Url,
-    client: &Client,
     ipfs: &IpfsClient,
     volume: &Privkey,
-    header: &SnapshotHeader,
     data: Pin<Box<dyn AsyncRead + Send + Sync>>,
-) -> Result<Option<SnapshotInfo>> {
+) -> Result<String> {
     let data_stream = ReaderStream::new(data);
     let stream = EncryptionStream::new(data_stream, &volume.to_chacha20_key());
     let mut reader = stream.into_async_read();
-    let cid = ipfs.add_async(reader).await;
-    println!("got cid: {:?}", cid);
-    Err(anyhow!("Not implemented"))
+    let cid = ipfs.add_async(reader).await?;
+    Ok(cid.hash)
 }
 
+/// Fetch a snapshot from IPFS.
 pub async fn fetch_ipfs(
     api: &Url,
     client: &Client,
