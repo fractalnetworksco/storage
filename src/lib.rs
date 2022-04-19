@@ -1,5 +1,6 @@
 pub mod chacha20;
 pub mod ed25519;
+mod ipfs;
 pub mod keys;
 mod types;
 
