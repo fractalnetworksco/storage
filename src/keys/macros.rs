@@ -44,22 +44,6 @@ macro_rules! impl_serde {
                 }
             }
         }
-
-        paste! {
-            #[test]
-            fn [<test_ $type:lower _serde>]() {
-                use serde_test::{assert_tokens, Configure, Token};
-                let example = "yG+Xc4BmcF/j5ChWkOloirX6nWxjWqN3p2nihDtGVW4=";
-                let key = <$type>::from_str(example).unwrap();
-                assert_tokens(&key.readable(), &[Token::Str(example)]);
-                let mut tokens = vec![Token::Tuple { len: 32 }];
-                for byte in &key.0 {
-                    tokens.push(Token::U8(*byte));
-                }
-                tokens.push(Token::TupleEnd);
-                assert_tokens(&key.compact(), &tokens);
-            }
-        }
     };
 }
 

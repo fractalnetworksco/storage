@@ -7,7 +7,6 @@ use ed25519_dalek_fiat::{
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
-use log::*;
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::pin::Pin;
@@ -65,7 +64,7 @@ impl<E: StdError> Stream for SignStream<E> {
             Poll::Ready(Some(Ok(bytes))) => {
                 self.hasher.update(bytes);
             }
-            Poll::Ready(Some(Err(error))) => self.eof = true,
+            Poll::Ready(Some(Err(_error))) => self.eof = true,
             Poll::Ready(None) => {
                 self.eof = true;
                 let secret_key = SecretKey::from_bytes(self.privkey.as_slice()).unwrap();
@@ -78,7 +77,7 @@ impl<E: StdError> Stream for SignStream<E> {
                         let signature = signature.to_bytes().to_vec();
                         return Poll::Ready(Some(Ok(Bytes::from(signature))));
                     }
-                    Err(error) => unimplemented!(),
+                    Err(_error) => unimplemented!(),
                 }
             }
             _ => {}

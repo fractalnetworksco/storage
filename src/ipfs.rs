@@ -1,22 +1,17 @@
-use crate::chacha20::{DecryptionStream, EncryptionStream};
+use crate::chacha20::EncryptionStream;
 use crate::ed25519::*;
-use crate::keys::{Privkey, Pubkey};
-use crate::types::*;
-use anyhow::{anyhow, Result};
-use async_trait::async_trait;
+use crate::keys::Privkey;
+use anyhow::Result;
 use bytes::Bytes;
 use cid::Cid;
-use futures::stream::IntoAsyncRead;
 use futures::Stream;
 use futures::TryStreamExt;
 use ipfs_api::{IpfsApi, IpfsClient};
-use reqwest::{Body, Client, Error};
+use reqwest::Error;
 use std::pin::Pin;
 use std::str::FromStr;
 use tokio::io::AsyncRead;
-use tokio_stream::StreamExt;
-use tokio_util::io::{ReaderStream, StreamReader};
-use url::Url;
+use tokio_util::io::ReaderStream;
 
 /// Upload a stream of data to IPFS, encrypted with the volume's encryption key.
 pub async fn upload_encrypt(
@@ -26,7 +21,7 @@ pub async fn upload_encrypt(
 ) -> Result<Cid> {
     let data_stream = ReaderStream::new(data);
     let stream = EncryptionStream::new(data_stream, &volume.to_chacha20_key());
-    let mut reader = stream.into_async_read();
+    let reader = stream.into_async_read();
     let cid = ipfs.add_async(reader).await?;
     let cid = Cid::from_str(&cid.hash)?;
     Ok(cid)
@@ -35,11 +30,11 @@ pub async fn upload_encrypt(
 /// Fetch a snapshot from IPFS, decrypt it on-the-fly with the volume's decryption key.
 pub async fn fetch_decrypt(
     ipfs: &IpfsClient,
-    volume: &Privkey,
-    hash: Option<Vec<u8>>,
-    cid: &Cid,
+    _volume: &Privkey,
+    _hash: Option<Vec<u8>>,
+    _cid: &Cid,
 ) -> Result<Pin<Box<dyn Stream<Item = Bytes> + Sync + Send>>, Error> {
     let cid = "QmNrR8oEBeitvCqTugtH96JEo2wywBcqFb5bxsuhaBmML1";
-    let data = ipfs.cat(&cid);
+    let _data = ipfs.cat(&cid);
     unimplemented!()
 }

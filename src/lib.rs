@@ -7,11 +7,10 @@ mod types;
 use crate::chacha20::{DecryptionStream, EncryptionStream};
 use crate::keys::{Privkey, Pubkey};
 pub use crate::types::*;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use ed25519::*;
-use futures::stream::IntoAsyncRead;
 use futures::Stream;
 use futures::TryStreamExt;
 use ipfs_api::{IpfsApi, IpfsClient};
@@ -19,7 +18,7 @@ use reqwest::{Body, Client, Error};
 use std::pin::Pin;
 use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
-use tokio_util::io::{ReaderStream, StreamReader};
+use tokio_util::io::ReaderStream;
 use url::Url;
 
 #[async_trait]
@@ -209,7 +208,7 @@ pub async fn upload_ipfs(
 ) -> Result<String> {
     let data_stream = ReaderStream::new(data);
     let stream = EncryptionStream::new(data_stream, &volume.to_chacha20_key());
-    let mut reader = stream.into_async_read();
+    let reader = stream.into_async_read();
     let cid = ipfs.add_async(reader).await?;
     Ok(cid.hash)
 }
@@ -237,10 +236,10 @@ pub async fn fetch_ipfs(
         query.push(("hash", hex::encode(&hash)));
     }
     // get response
-    let response = client.get(url).query(&query).send().await?;
+    let _response = client.get(url).query(&query).send().await?;
     // parse the response into a SnapshotManifest
     // pull CID out of snapshot manifest
     let cid = "QmNrR8oEBeitvCqTugtH96JEo2wywBcqFb5bxsuhaBmML1";
-    let data = ipfs.cat(&cid);
+    let _data = ipfs.cat(&cid);
     unimplemented!()
 }
