@@ -20,7 +20,7 @@ stages:
 
 # make sure that formatting is correct.
 rustfmt:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: test
   allow_failure: true
   script:
@@ -28,7 +28,7 @@ rustfmt:
 
 # make sure there are no issues with the code.
 clippy:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: test
   allow_failure: true
   script:
@@ -39,7 +39,7 @@ test:
   services:
     - name: ipfs/go-ipfs
       alias: ipfs
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: test
   variables:
     IPFS_API: http://ipfs:5001
@@ -48,7 +48,7 @@ test:
 
 # generate release build
 build:amd64:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: build
   script:
     - cargo build --bin client --release --features client
@@ -59,7 +59,7 @@ build:amd64:
 
 # build for arm target
 build:arm32:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable-arm32
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable-arm32:v1
   stage: build
   script:
     - cargo build --release --target arm-unknown-linux-gnueabihf --bin client --features client
@@ -70,7 +70,7 @@ build:arm32:
 
 # build for arm target
 build:arm64:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable-arm64
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable-arm64:v1
   stage: build
   script:
     - cargo build --release --target aarch64-unknown-linux-gnu --bin client --features client
@@ -81,7 +81,7 @@ build:arm64:
 
 # generate rust html documentation
 rustdoc:
-  image: registry.gitlab.com/fractalnetworks/images/rust:stable
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: build
   script:
     - cargo doc --all-features
