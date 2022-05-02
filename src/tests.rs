@@ -4,12 +4,15 @@ use futures::stream::{self, TryStreamExt};
 use ipfs_api::{IpfsClient, TryFromUri};
 use std::ops::Deref;
 
+/// Generate an IPFS client from the IPFS_API env variable.
 fn ipfs_client() -> IpfsClient {
     let url = std::env::var("IPFS_API").unwrap();
     let ipfs_api = IpfsClient::from_str(&url).unwrap();
     ipfs_api
 }
 
+/// Given an IPFS client and a private key, upload some data to IPFS and then
+/// check it, and finally make sure that what we got back matches what we sent.
 async fn test_ipfs_upload_data(ipfs_client: &IpfsClient, privkey: &Privkey, data: &[u8]) {
     let data_bytes = Bytes::copy_from_slice(&data);
     let stream = stream::iter(vec![Ok(data_bytes)]);
