@@ -1,9 +1,11 @@
 use anyhow::Result;
+use cid::Cid;
 use futures::StreamExt;
 use ipfs_api::{IpfsClient, TryFromUri};
 use reqwest::{Client, ClientBuilder};
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::str::FromStr;
 use storage_api::{ed25519::*, keys::Privkey, SnapshotHeader, Storage};
 use structopt::StructOpt;
 use tokio::fs::File;
@@ -12,16 +14,18 @@ use tokio::io::{AsyncRead, AsyncWriteExt};
 use tokio_util::io::ReaderStream;
 use url::Url;
 
+const STORAGE_API: &str = "https://storage.fractalnetworks.co";
+
 #[derive(StructOpt, Debug, Clone)]
 pub struct Options {
     /// Url to the server running the storage API.
-    #[structopt(long, short)]
-    server: Url,
+    #[structopt(long, short, global = true, env = "STORAGE_API")]
+    server: Option<Url>,
     /// Url of IPFS server.
-    #[structopt(long)]
+    #[structopt(long, global = true, env = "IPFS_API")]
     ipfs: Option<Url>,
     /// Allow invalid TLS certificates.
-    #[structopt(long)]
+    #[structopt(long, global = true)]
     insecure: bool,
     #[structopt(subcommand)]
     command: Command,
@@ -38,7 +42,9 @@ pub enum Command {
     /// Upload a new snapshot.
     Upload(UploadCommand),
     /// Upload a new snapshot using IPFS
-    UploadIpfs(UploadIpfsCommand),
+    IpfsUpload(IpfsUploadCommand),
+    /// Fetch data from IPFS.
+    IpfsFetch(IpfsFetchCommand),
     /// Fetch a snapshot.
     Fetch(FetchCommand),
 }
@@ -85,9 +91,18 @@ pub struct UploadCommand {
 }
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct UploadIpfsCommand {
+pub struct IpfsUploadCommand {
     #[structopt(long, short = "k")]
     privkey: Privkey,
+    /// File to upload, if none specified, read from standard input.
+    file: Option<PathBuf>,
+}
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct IpfsFetchCommand {
+    #[structopt(long, short = "k")]
+    privkey: Privkey,
+    cid: Cid,
     /// File to upload, if none specified, read from standard input.
     file: Option<PathBuf>,
 }
@@ -113,6 +128,12 @@ impl Options {
         }
     }
 
+    pub fn server(&self) -> Url {
+        self.server
+            .clone()
+            .unwrap_or_else(|| Url::from_str(STORAGE_API).unwrap())
+    }
+
     pub async fn run(&self) -> Result<()> {
         let client = ClientBuilder::new()
             .danger_accept_invalid_certs(self.insecure)
@@ -124,7 +145,7 @@ impl Options {
                     println!("privkey {}", privkey);
                     privkey
                 });
-                let result = self.server.create(&client, &privkey).await?;
+                let result = self.server().create(&client, &privkey).await?;
                 if result {
                     println!("pubkey {}", privkey.pubkey());
                 }
@@ -132,7 +153,7 @@ impl Options {
             }
             Command::List(opts) => {
                 let result = self
-                    .server
+                    .server()
                     .list(
                         &client,
                         &opts.privkey.pubkey(),
@@ -146,7 +167,7 @@ impl Options {
             }
             Command::Latest(opts) => {
                 let result = self
-                    .server
+                    .server()
                     .latest(&client, &opts.privkey.pubkey(), opts.parent)
                     .await?;
                 println!("{:#?}", result);
@@ -165,14 +186,14 @@ impl Options {
                 };
 
                 let result = self
-                    .server
+                    .server()
                     .upload(&client, &opts.privkey, &header, input)
                     .await?;
 
                 println!("{:#?}", result);
                 Ok(())
             }
-            Command::UploadIpfs(opts) => {
+            Command::IpfsUpload(opts) => {
                 let input: Pin<Box<dyn AsyncRead + Send + Sync>> = match &opts.file {
                     Some(file) => Box::pin(File::open(file).await?),
                     None => Box::pin(stdin()),
@@ -184,11 +205,13 @@ impl Options {
                 let ipfs = self.ipfs()?;
 
                 let cid = storage_api::upload_encrypt(&ipfs, &opts.privkey, input).await?;
+                println!("{cid}");
                 Ok(())
             }
+            Command::IpfsFetch(opts) => Ok(()),
             Command::Fetch(opts) => {
                 let (header, mut stream) = self
-                    .server
+                    .server()
                     .fetch(&client, &opts.privkey, opts.generation, opts.parent)
                     .await?;
                 let mut stdout = tokio::io::stdout();
