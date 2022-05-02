@@ -17,10 +17,9 @@ use tokio_util::io::ReaderStream;
 pub async fn upload_encrypt(
     ipfs: &IpfsClient,
     volume: &Privkey,
-    data: Pin<Box<dyn AsyncRead + Send + Sync>>,
+    data: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
 ) -> Result<Cid> {
-    let data_stream = ReaderStream::new(data);
-    let stream = EncryptionStream::new(data_stream, &volume.to_chacha20_key());
+    let stream = EncryptionStream::new(data, &volume.to_chacha20_key());
     let reader = stream.into_async_read();
     let cid = ipfs.add_async(reader).await?;
     let cid = Cid::from_str(&cid.hash)?;
