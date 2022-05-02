@@ -36,10 +36,15 @@ clippy:
 
 # run unit tests.
 test:
+  services:
+    - name: ipfs/go-ipfs
+      alias: ipfs
   image: registry.gitlab.com/fractalnetworks/images/rust:stable
   stage: test
+  variables:
+    IPFS_API: http://ipfs:5001
   script:
-    - cargo test
+    - cargo test -- --include-ignored
 
 # generate release build
 build:amd64:
