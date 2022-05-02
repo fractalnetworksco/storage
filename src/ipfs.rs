@@ -1,4 +1,4 @@
-use crate::chacha20::EncryptionStream;
+use crate::chacha20::{DecryptionStream, EncryptionStream};
 use crate::ed25519::*;
 use crate::keys::Privkey;
 use anyhow::Result;
@@ -30,11 +30,10 @@ pub async fn upload_encrypt(
 /// Fetch a snapshot from IPFS, decrypt it on-the-fly with the volume's decryption key.
 pub async fn fetch_decrypt(
     ipfs: &IpfsClient,
-    _volume: &Privkey,
-    _hash: Option<Vec<u8>>,
-    _cid: &Cid,
+    volume: &Privkey,
+    cid: &Cid,
 ) -> Result<Pin<Box<dyn Stream<Item = Bytes> + Sync + Send>>, Error> {
-    let cid = "QmNrR8oEBeitvCqTugtH96JEo2wywBcqFb5bxsuhaBmML1";
-    let _data = ipfs.cat(&cid);
+    let data = ipfs.cat(&cid.to_string());
+    let data = DecryptionStream::new(data, &volume.to_chacha20_key());
     unimplemented!()
 }

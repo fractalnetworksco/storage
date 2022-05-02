@@ -81,15 +81,12 @@ enum DecryptionStreamState {
 }
 
 pub struct DecryptionStream<E: StdError> {
-    stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send + Sync>>,
+    stream: Pin<Box<dyn Stream<Item = Result<Bytes, E>> + Send>>,
     state: DecryptionStreamState,
 }
 
 impl<E: StdError> DecryptionStream<E> {
-    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(
-        stream: S,
-        key: &Key,
-    ) -> Self {
+    pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + 'static>(stream: S, key: &Key) -> Self {
         DecryptionStream {
             stream: Box::pin(stream),
             state: DecryptionStreamState::Start(key.clone(), BytesMut::with_capacity(24)),

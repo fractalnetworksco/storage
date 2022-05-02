@@ -67,7 +67,7 @@ pub trait Storage {
     ) -> Result<
         (
             SnapshotHeader,
-            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>> + Sync + Send>>,
+            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>> + Send>>,
         ),
         Error,
     >;
@@ -162,7 +162,7 @@ impl Storage for Url {
     ) -> Result<
         (
             SnapshotHeader,
-            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>> + Sync + Send>>,
+            Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>> + Send>>,
         ),
         Error,
     > {
@@ -220,13 +220,7 @@ pub async fn fetch_ipfs(
     ipfs: &IpfsClient,
     volume: &Privkey,
     hash: Option<Vec<u8>>,
-) -> Result<
-    (
-        SnapshotHeader,
-        Pin<Box<dyn Stream<Item = Bytes> + Sync + Send>>,
-    ),
-    Error,
-> {
+) -> Result<(SnapshotHeader, Pin<Box<dyn Stream<Item = Bytes> + Send>>), Error> {
     // api request to get manifest
     let url = api
         .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
