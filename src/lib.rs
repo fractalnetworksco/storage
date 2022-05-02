@@ -7,6 +7,7 @@ mod tests;
 mod types;
 
 use crate::chacha20::{DecryptionStream, EncryptionStream};
+pub use crate::ipfs::*;
 use crate::keys::{Privkey, Pubkey};
 pub use crate::types::*;
 use anyhow::Result;

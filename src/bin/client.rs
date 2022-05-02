@@ -1,6 +1,6 @@
 use anyhow::Result;
 use futures::StreamExt;
-use ipfs_api::IpfsClient;
+use ipfs_api::{IpfsClient, TryFromUri};
 use reqwest::{Client, ClientBuilder};
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -9,6 +9,7 @@ use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
 use tokio::io::{AsyncRead, AsyncWriteExt};
+use tokio_util::io::ReaderStream;
 use url::Url;
 
 #[derive(StructOpt, Debug, Clone)]
@@ -16,6 +17,9 @@ pub struct Options {
     /// Url to the server running the storage API.
     #[structopt(long, short)]
     server: Url,
+    /// Url of IPFS server.
+    #[structopt(long)]
+    ipfs: Option<Url>,
     /// Allow invalid TLS certificates.
     #[structopt(long)]
     insecure: bool,
@@ -84,13 +88,6 @@ pub struct UploadCommand {
 pub struct UploadIpfsCommand {
     #[structopt(long, short = "k")]
     privkey: Privkey,
-    #[structopt(long, short)]
-    generation: u64,
-    #[structopt(long, short)]
-    parent: Option<u64>,
-    #[structopt(long, short)]
-    creation: u64,
-
     /// File to upload, if none specified, read from standard input.
     file: Option<PathBuf>,
 }
@@ -110,7 +107,10 @@ pub struct FetchCommand {
 
 impl Options {
     pub fn ipfs(&self) -> Result<IpfsClient> {
-        Ok(IpfsClient::default())
+        match &self.ipfs {
+            Some(url) => Ok(IpfsClient::from_str(&url.to_string())?),
+            None => Ok(IpfsClient::default()),
+        }
     }
 
     pub async fn run(&self) -> Result<()> {
@@ -173,28 +173,17 @@ impl Options {
                 Ok(())
             }
             Command::UploadIpfs(opts) => {
-                let header = SnapshotHeader {
-                    parent: opts.parent,
-                    generation: opts.generation,
-                    creation: opts.creation,
-                };
-
                 let input: Pin<Box<dyn AsyncRead + Send + Sync>> = match &opts.file {
                     Some(file) => Box::pin(File::open(file).await?),
                     None => Box::pin(stdin()),
                 };
 
+                let input = ReaderStream::new(input);
+                let input = Box::pin(input);
+
                 let ipfs = self.ipfs()?;
 
-                storage_api::upload_ipfs(
-                    &self.server,
-                    &client,
-                    &ipfs,
-                    &opts.privkey,
-                    &header,
-                    input,
-                )
-                .await?;
+                let cid = storage_api::upload_encrypt(&ipfs, &opts.privkey, input).await?;
                 Ok(())
             }
             Command::Fetch(opts) => {
