@@ -2,11 +2,11 @@ use anyhow::Result;
 use cid::Cid;
 use futures::StreamExt;
 use ipfs_api::{IpfsClient, TryFromUri};
-use reqwest::{Client, ClientBuilder};
+use reqwest::ClientBuilder;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::str::FromStr;
-use storage_api::{ed25519::*, keys::Privkey, SnapshotHeader, Storage};
+use storage_api::{keys::Privkey, SnapshotHeader, Storage};
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
@@ -208,7 +208,7 @@ impl Options {
                 println!("{cid}");
                 Ok(())
             }
-            Command::IpfsFetch(opts) => Ok(()),
+            Command::IpfsFetch(_opts) => Ok(()),
             Command::Fetch(opts) => {
                 let (header, mut stream) = self
                     .server()

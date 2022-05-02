@@ -1,5 +1,5 @@
 use crate::*;
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 use futures::stream::{self, TryStreamExt};
 use ipfs_api::{IpfsClient, TryFromUri};
 use std::ops::Deref;

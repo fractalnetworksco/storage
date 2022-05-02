@@ -15,8 +15,6 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use ed25519::*;
 use futures::Stream;
-use futures::TryStreamExt;
-use ipfs_api::{IpfsApi, IpfsClient};
 use reqwest::{Body, Client, Error};
 use std::pin::Pin;
 use tokio::io::AsyncRead;

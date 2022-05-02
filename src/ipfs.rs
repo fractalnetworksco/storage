@@ -4,14 +4,10 @@ use crate::keys::Privkey;
 use anyhow::Result;
 use bytes::Bytes;
 use cid::Cid;
-use futures::Stream;
-use futures::TryStreamExt;
+use futures::{Stream, TryStreamExt};
 use ipfs_api::{IpfsApi, IpfsClient};
 use reqwest::Error;
-use std::pin::Pin;
-use std::str::FromStr;
-use tokio::io::AsyncRead;
-use tokio_util::io::ReaderStream;
+use std::{pin::Pin, str::FromStr};
 
 /// Upload a stream of data to IPFS, encrypted with the volume's encryption key.
 pub async fn upload_encrypt(

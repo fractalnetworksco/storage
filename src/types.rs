@@ -2,9 +2,7 @@ use crate::keys::{Privkey, Pubkey, Secret};
 use anyhow::Result;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::{Bytes, BytesMut};
-use ed25519_dalek_fiat::{
-    Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, Signature, SIGNATURE_LENGTH,
-};
+use ed25519_dalek_fiat::{ExpandedSecretKey, PublicKey, SecretKey};
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
