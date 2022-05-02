@@ -1,6 +1,10 @@
-use crate::keys::{Pubkey, Secret};
+use crate::keys::{Privkey, Pubkey, Secret};
+use anyhow::Result;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::{Bytes, BytesMut};
+use ed25519_dalek_fiat::{
+    Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, Signature, SIGNATURE_LENGTH,
+};
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
@@ -30,6 +34,24 @@ pub struct SnapshotManifest {
     pub parent_key: Option<Secret>,
     /// IPFS CID of data.
     pub data: String,
+}
+
+impl SnapshotManifest {
+    pub fn encode(&self) -> Vec<u8> {
+        bincode::serialize(self).unwrap()
+    }
+
+    pub fn sign(&self, privkey: &Privkey) -> Result<Vec<u8>> {
+        let data = self.encode();
+
+        let secret_key = SecretKey::from_bytes(privkey.as_slice()).unwrap();
+        let public_key: PublicKey = (&secret_key).into();
+        let secret_key: ExpandedSecretKey = (&secret_key).into();
+
+        let signature = secret_key.sign(&data, &public_key);
+        let signature = signature.to_bytes().to_vec();
+        Ok(signature)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]

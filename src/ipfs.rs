@@ -32,8 +32,8 @@ pub async fn fetch_decrypt(
     ipfs: &IpfsClient,
     volume: &Privkey,
     cid: &Cid,
-) -> Result<Pin<Box<dyn Stream<Item = Bytes> + Sync + Send>>, Error> {
+) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, ipfs_api::Error>> + Send>>, Error> {
     let data = ipfs.cat(&cid.to_string());
-    let data = DecryptionStream::new(data, &volume.to_chacha20_key());
-    unimplemented!()
+    let data = Box::pin(DecryptionStream::new(data, &volume.to_chacha20_key()));
+    Ok(data)
 }

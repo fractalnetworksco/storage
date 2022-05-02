@@ -2,6 +2,8 @@ pub mod chacha20;
 pub mod ed25519;
 mod ipfs;
 pub mod keys;
+#[cfg(test)]
+mod tests;
 mod types;
 
 use crate::chacha20::{DecryptionStream, EncryptionStream};
@@ -189,51 +191,4 @@ impl Storage for Url {
             unimplemented!()
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
-    }
-}
-
-/// Upload a stream of data to IPFS, encrypted with the volume's encryption key.
-pub async fn upload_ipfs(
-    ipfs: &IpfsClient,
-    volume: &Privkey,
-    data: Pin<Box<dyn AsyncRead + Send + Sync>>,
-) -> Result<String> {
-    let data_stream = ReaderStream::new(data);
-    let stream = EncryptionStream::new(data_stream, &volume.to_chacha20_key());
-    let reader = stream.into_async_read();
-    let cid = ipfs.add_async(reader).await?;
-    Ok(cid.hash)
-}
-
-/// Fetch a snapshot from IPFS.
-pub async fn fetch_ipfs(
-    api: &Url,
-    client: &Client,
-    ipfs: &IpfsClient,
-    volume: &Privkey,
-    hash: Option<Vec<u8>>,
-) -> Result<(SnapshotHeader, Pin<Box<dyn Stream<Item = Bytes> + Send>>), Error> {
-    // api request to get manifest
-    let url = api
-        .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
-        .unwrap();
-    let mut query = vec![];
-    if let Some(hash) = hash {
-        query.push(("hash", hex::encode(&hash)));
-    }
-    // get response
-    let _response = client.get(url).query(&query).send().await?;
-    // parse the response into a SnapshotManifest
-    // pull CID out of snapshot manifest
-    let cid = "QmNrR8oEBeitvCqTugtH96JEo2wywBcqFb5bxsuhaBmML1";
-    let _data = ipfs.cat(&cid);
-    unimplemented!()
 }
