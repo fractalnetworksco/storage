@@ -1,4 +1,4 @@
-use crate::keys::{Privkey, Pubkey};
+use crate::keys::{Privkey, Pubkey, Secret};
 use blake2::{Blake2s256, Digest as Blake2Digest};
 use bytes::{Buf, Bytes, BytesMut};
 use ed25519_dalek_fiat::{
@@ -17,10 +17,13 @@ pub trait ToChaCha20 {
 
 impl ToChaCha20 for Privkey {
     fn to_chacha20_key(&self) -> chacha20::Key {
-        let mut hasher = Blake2s256::new();
-        hasher.update(self.as_slice());
-        let output = hasher.finalize();
-        chacha20::Key::clone_from_slice(&output)
+        self.derive_secret().to_chacha20_key()
+    }
+}
+
+impl ToChaCha20 for Secret {
+    fn to_chacha20_key(&self) -> chacha20::Key {
+        chacha20::Key::clone_from_slice(self.as_slice())
     }
 }
 

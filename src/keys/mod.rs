@@ -1,6 +1,7 @@
 #[macro_use]
 mod macros;
 
+use blake2::{Blake2s256, Digest as Blake2Digest};
 use ed25519_dalek_fiat::{PublicKey, SecretKey};
 use paste::paste;
 use rand_core::{OsRng, RngCore};
@@ -131,6 +132,27 @@ impl Privkey {
         let public_key: PublicKey = (&private_key).into();
         Pubkey(public_key.to_bytes())
     }
+
+    /// Derive secret by hashing with blake2.
+    pub fn derive_secret(&self) -> Secret {
+        let mut hasher = Blake2s256::new();
+        hasher.update(self.as_slice());
+        let output = hasher.finalize();
+        Secret(output.as_slice().try_into().unwrap())
+    }
+}
+
+#[test]
+fn test_privkey_to_secret() {
+    let privkey = Privkey::generate();
+    let secret = privkey.derive_secret();
+
+    let privkey = Privkey::from_str("CHmZHrfC5uRMUs3J7qjmc4dl+32f157mfLdV9b5Ca2o=").unwrap();
+    let secret = privkey.derive_secret();
+    assert_eq!(
+        &secret.to_base64(),
+        "f1loUq2/FQVkW/ytvYcdwSRU2o/djxU+6nfW0YxHs/4="
+    );
 }
 
 #[test]

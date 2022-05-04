@@ -6,7 +6,10 @@ use reqwest::ClientBuilder;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::str::FromStr;
-use storage_api::{keys::Privkey, SnapshotHeader, Storage};
+use storage_api::{
+    keys::{Privkey, Secret},
+    SnapshotHeader, Storage,
+};
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
@@ -92,16 +95,24 @@ pub struct UploadCommand {
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct IpfsUploadCommand {
-    #[structopt(long, short = "k")]
-    privkey: Privkey,
+    /// Decryption key (can also be derived from private key).
+    #[structopt(long, required_unless("privkey"))]
+    secret: Option<Secret>,
+    /// Private key (used to derive decryption key).
+    #[structopt(long, required_unless("secret"))]
+    privkey: Option<Privkey>,
     /// File to upload, if none specified, read from standard input.
     file: Option<PathBuf>,
 }
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct IpfsFetchCommand {
-    #[structopt(long, short = "k")]
-    privkey: Privkey,
+    /// Decryption key (can also be derived from private key).
+    #[structopt(long, required_unless("privkey"))]
+    secret: Option<Secret>,
+    /// Private key (used to derive decryption key).
+    #[structopt(long, required_unless("secret"))]
+    privkey: Option<Privkey>,
     cid: Cid,
     /// File to upload, if none specified, read from standard input.
     file: Option<PathBuf>,
@@ -204,11 +215,32 @@ impl Options {
 
                 let ipfs = self.ipfs()?;
 
-                let cid = storage_api::upload_encrypt(&ipfs, &opts.privkey, input).await?;
+                let secret = opts
+                    .secret
+                    .or_else(|| opts.privkey.map(|k| k.derive_secret()))
+                    .unwrap();
+                let cid = storage_api::upload_encrypt(&ipfs, &secret, input).await?;
                 println!("{cid}");
                 Ok(())
             }
-            Command::IpfsFetch(_opts) => Ok(()),
+            Command::IpfsFetch(opts) => {
+                let ipfs = self.ipfs()?;
+                let secret = opts
+                    .secret
+                    .or_else(|| opts.privkey.map(|k| k.derive_secret()))
+                    .unwrap();
+                let mut data = storage_api::fetch_decrypt(&ipfs, &secret, &opts.cid).await?;
+                let mut stdout = tokio::io::stdout();
+
+                loop {
+                    match data.next().await {
+                        Some(data) => stdout.write_all(&data?).await?,
+                        None => break,
+                    }
+                }
+
+                Ok(())
+            }
             Command::Fetch(opts) => {
                 let (header, mut stream) = self
                     .server()

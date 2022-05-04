@@ -35,7 +35,7 @@ cid = { version = "0.8.4", features = ["serde-codec"] }
 bincode = "1.3.3"
 
 [features]
-default = ["tokio", "tokio-util/io", "tokio-util/compat", "tokio-stream", "hex"]
+default = ["tokio", "tokio-util/io", "tokio-util/compat", "tokio-stream", "hex", "base64"]
 api = []
 client = ["structopt", "tokio/rt-multi-thread", "tokio/macros", "tokio/io-std", "tokio/fs", "env_logger"]
 
