@@ -4,6 +4,7 @@ use chacha20::{Key, XChaCha20, XNonce};
 use futures::task::Context;
 use futures::task::Poll;
 use futures::Stream;
+use log::debug;
 use rand_core::{OsRng, RngCore};
 use std::error::Error as StdError;
 use std::pin::Pin;
@@ -50,18 +51,22 @@ impl<E: StdError> Stream for EncryptionStream<E> {
         match self.state.clone() {
             Start => {
                 self.state = Stream;
+                debug!("Sending nonce");
                 Poll::Ready(Some(Ok(Bytes::copy_from_slice(self.nonce.as_slice()))))
             }
             Stream => match Pin::new(&mut self.stream).poll_next(cx) {
-                error @ Poll::Ready(Some(Err(_))) => {
+                Poll::Ready(Some(Err(error))) => {
+                    debug!("Read error from stream: {error:?}");
                     self.state = Error;
-                    error
+                    Poll::Ready(Some(Err(error)))
                 }
                 done @ Poll::Ready(None) => {
+                    debug!("Stream closed");
                     self.state = Done;
                     done
                 }
                 Poll::Ready(Some(Ok(bytes))) => {
+                    debug!("Read bytes: {bytes:?}");
                     let mut bytes = bytes.as_ref().to_vec();
                     self.crypt.apply_keystream(&mut bytes);
                     Poll::Ready(Some(Ok(Bytes::copy_from_slice(&bytes))))

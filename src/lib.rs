@@ -8,7 +8,7 @@ mod types;
 
 use crate::chacha20::{DecryptionStream, EncryptionStream};
 pub use crate::ipfs::*;
-use crate::keys::{Privkey, Pubkey};
+use crate::keys::{Privkey, Pubkey, Secret};
 pub use crate::types::*;
 use anyhow::Result;
 use async_trait::async_trait;
