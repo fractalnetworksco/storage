@@ -24,6 +24,7 @@ pub struct Manifest {
     /// Size of this snapshot and the previous ones.
     pub size_total: u64,
     /// Parent snapshot (if exists).
+    #[serde(default)]
     pub parent: Option<Parent>,
     /// IPFS CID of data.
     pub data: Url,

@@ -4,14 +4,14 @@ use cid::Cid;
 use futures::StreamExt;
 use ipfs_api::{IpfsClient, TryFromUri};
 use reqwest::ClientBuilder;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str::FromStr;
 use storage_api::{keys::*, *};
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio_util::io::ReaderStream;
 use url::Url;
 
@@ -55,8 +55,8 @@ pub enum Command {
     /// Fetch a snapshot.
     Fetch(FetchCommand),
     /// Generate a manifest from JSON
-    ManifestSign(ManifestSignCommand),
-    ManifestVerify(ManifestVerifyCommand),
+    ManifestGenerate(ManifestGenerateCommand),
+    ManifestParse(ManifestParseCommand),
 }
 
 #[derive(StructOpt, Debug, Clone)]
@@ -70,16 +70,26 @@ pub struct SecretCommand {
 }
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct ManifestSignCommand {
+pub struct ManifestGenerateCommand {
+    /// Key to sign manifest with. Don't generate signature if missing.
     #[structopt(long, short)]
     privkey: Option<Privkey>,
+    /// File to read JSON data from (otherwise read from standard input).
     file: Option<PathBuf>,
 }
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct ManifestVerifyCommand {
+pub struct ManifestParseCommand {
+    /// If given, validate signature.
     #[structopt(long, short)]
     pubkey: Option<Pubkey>,
+    /// Ignore signature.
+    #[structopt(long)]
+    split_signature: bool,
+    /// Ignore invalid signature.
+    #[structopt(long)]
+    ignore_invalid: bool,
+    /// File to read manifest from (or read from standard input).
     file: Option<PathBuf>,
 }
 
@@ -167,6 +177,16 @@ async fn read_privkey() -> Result<Privkey> {
     let mut lines = stdin.lines();
     let line = lines.next_line().await?.ok_or(anyhow!("Error: no input"))?;
     Ok(Privkey::from_str(&line)?)
+}
+
+async fn read_data(file: Option<&Path>) -> Result<Vec<u8>> {
+    let mut reader: Box<dyn AsyncRead + Unpin> = match file {
+        Some(path) => Box::new(File::open(path).await?),
+        None => Box::new(tokio::io::stdin()),
+    };
+    let mut data = vec![];
+    reader.read_to_end(&mut data).await?;
+    Ok(data)
 }
 
 impl Options {
@@ -297,8 +317,48 @@ impl Options {
                 }
                 Ok(())
             }
-            Command::ManifestSign(opts) => Ok(()),
-            Command::ManifestVerify(opts) => Ok(()),
+            Command::ManifestGenerate(opts) => {
+                let data = read_data(opts.file.as_deref()).await?;
+                let manifest: Manifest = serde_json::from_slice(&data)?;
+                match &opts.privkey {
+                    Some(key) => {
+                        tokio::io::stdout()
+                            .write_all(&manifest.signed(&key))
+                            .await?
+                    }
+                    None => tokio::io::stdout().write_all(&manifest.encode()).await?,
+                }
+                Ok(())
+            }
+            Command::ManifestParse(opts) => {
+                let data = read_data(opts.file.as_deref()).await?;
+                let manifest = match &opts.pubkey {
+                    Some(key) => {
+                        let (manifest, signature) =
+                            Manifest::split(&data).ok_or(anyhow!("Manifest too short"))?;
+                        match Manifest::validate(manifest, signature, key) {
+                            Ok(()) => {}
+                            Err(e) if opts.ignore_invalid => {
+                                eprintln!("Warning: Invalid signature: {e}")
+                            }
+                            Err(e) => return Err(e),
+                        }
+                        manifest
+                    }
+                    None => match opts.split_signature {
+                        true => {
+                            Manifest::split(&data)
+                                .ok_or(anyhow!("Manifest too short"))?
+                                .0
+                        }
+                        false => &data,
+                    },
+                };
+                let manifest = Manifest::decode(&manifest)?;
+                let manifest = serde_json::to_string_pretty(&manifest)?;
+                println!("{manifest}");
+                Ok(())
+            }
             Command::Privkey => {
                 let privkey = Privkey::generate();
                 println!("{privkey}");
@@ -332,6 +392,6 @@ async fn main() {
     let options = Options::from_args();
     match options.run().await {
         Ok(_) => {}
-        Err(e) => println!("{}", e.to_string()),
+        Err(e) => eprintln!("{}", e.to_string()),
     }
 }
