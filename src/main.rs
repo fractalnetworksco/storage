@@ -88,7 +88,7 @@ async fn main() {
     let mut auth_config = AuthConfig::new().with_keystore(key_store);
 
     rocket::build()
-        .mount("/", api::routes())
+        .mount("/api/v1/", api::routes())
         .manage(pool)
         .manage(options)
         .manage(auth_config)
