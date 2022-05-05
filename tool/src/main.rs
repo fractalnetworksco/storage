@@ -50,7 +50,24 @@ pub enum Command {
     IpfsFetch(IpfsFetchCommand),
     /// Fetch a snapshot.
     Fetch(FetchCommand),
+    /// Generate a manifest from JSON
+    ManifestGenerate(ManifestGenerateCommand),
+    ManifestSign(ManifestSignCommand),
+    ManifestVerify(ManifestVerifyCommand),
+    ManifestDump(ManifestDumpCommand),
 }
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct ManifestGenerateCommand {}
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct ManifestSignCommand {}
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct ManifestVerifyCommand {}
+
+#[derive(StructOpt, Debug, Clone)]
+pub struct ManifestDumpCommand {}
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct CreateCommand {
@@ -254,6 +271,10 @@ impl Options {
                 }
                 Ok(())
             }
+            Command::ManifestGenerate(opts) => Ok(()),
+            Command::ManifestSign(opts) => Ok(()),
+            Command::ManifestVerify(opts) => Ok(()),
+            Command::ManifestDump(opts) => Ok(()),
         }
     }
 }

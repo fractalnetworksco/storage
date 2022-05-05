@@ -51,10 +51,10 @@ build:amd64:
   image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
   stage: build
   script:
-    - cargo build --bin client --release --features client
+    - cargo build --workspace --release
   artifacts:
     paths:
-      - target/release/client
+      - target/release/storage-tool
     expire_in: 1 week
 
 # build for arm target
@@ -62,10 +62,10 @@ build:arm32:
   image: registry.gitlab.com/fractalnetworks/images/rust-stable-arm32:v1
   stage: build
   script:
-    - cargo build --release --target arm-unknown-linux-gnueabihf --bin client --features client
+    - cargo build --release --target arm-unknown-linux-gnueabihf --workspace
   artifacts:
     paths:
-      - target/arm-unknown-linux-gnueabihf/release/client
+      - target/arm-unknown-linux-gnueabihf/release/storage-tool
     expire_in: 1 week
 
 # build for arm target
@@ -73,10 +73,10 @@ build:arm64:
   image: registry.gitlab.com/fractalnetworks/images/rust-stable-arm64:v1
   stage: build
   script:
-    - cargo build --release --target aarch64-unknown-linux-gnu --bin client --features client
+    - cargo build --release --target aarch64-unknown-linux-gnu --workspace
   artifacts:
     paths:
-      - target/aarch64-unknown-linux-gnu/release/client
+      - target/aarch64-unknown-linux-gnu/release/storage-tool
     expire_in: 1 week
 
 # generate rust html documentation
@@ -102,11 +102,11 @@ pages:
   script:
     - mkdir public
     - mv target/doc public/doc
-    - mv target/release/client public/storage-client-master-amd64
+    - mv target/release/storage-tool public/storage-tool-master-amd64
     - sign public/storage-client-master-amd64
-    - mv target/arm-unknown-linux-gnueabihf/release/client public/storage-client-master-arm32
+    - mv target/arm-unknown-linux-gnueabihf/release/storage-tool public/storage-tool-master-arm32
     - sign public/storage-client-master-arm32
-    - mv target/aarch64-unknown-linux-gnu/release/client public/storage-client-master-arm64
+    - mv target/aarch64-unknown-linux-gnu/release/storage-tool public/storage-tool-master-arm64
     - sign public/storage-client-master-arm64
   artifacts:
     paths:
