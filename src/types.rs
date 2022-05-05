@@ -1,4 +1,3 @@
-use crate::keys::{Privkey, Pubkey, Secret};
 use anyhow::Result;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::{Bytes, BytesMut};
@@ -9,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::error::Error as StdError;
 use std::io::Cursor;
 use std::pin::Pin;
-use uuid::Uuid;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
 

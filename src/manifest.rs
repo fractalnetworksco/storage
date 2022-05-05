@@ -1,15 +1,7 @@
 use crate::keys::{Privkey, Pubkey, Secret};
 use anyhow::Result;
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use bytes::{Bytes, BytesMut};
 use ed25519_dalek_fiat::{ExpandedSecretKey, PublicKey, SecretKey, Signature, Verifier};
-use futures::stream::Stream;
-use futures::task::Context;
-use futures::task::Poll;
 use serde::{Deserialize, Serialize};
-use std::error::Error as StdError;
-use std::io::Cursor;
-use std::pin::Pin;
 use url::Url;
 use uuid::Uuid;
 
