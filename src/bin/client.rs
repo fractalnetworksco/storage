@@ -258,7 +258,7 @@ impl Options {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     env_logger::init();
     let options = Options::from_args();
