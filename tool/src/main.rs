@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use anyhow::Result;
 use cid::Cid;
 use futures::StreamExt;
@@ -6,14 +7,11 @@ use reqwest::ClientBuilder;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::str::FromStr;
-use storage_api::{
-    keys::{Privkey, Secret},
-    SnapshotHeader,
-};
+use storage_api::{keys::*, *};
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
-use tokio::io::{AsyncRead, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWriteExt, BufReader};
 use tokio_util::io::ReaderStream;
 use url::Url;
 
@@ -36,6 +34,12 @@ pub struct Options {
 
 #[derive(StructOpt, Debug, Clone)]
 pub enum Command {
+    /// Generate a new key.
+    Privkey,
+    /// Generate the corresponding pubkey.
+    Pubkey(PubkeyCommand),
+    /// Generate the corresponding secret.
+    Secret(SecretCommand),
     /// Create a new volume (and private key).
     Create(CreateCommand),
     /// Return the latest snapshot available from a given parent.
@@ -51,23 +55,33 @@ pub enum Command {
     /// Fetch a snapshot.
     Fetch(FetchCommand),
     /// Generate a manifest from JSON
-    ManifestGenerate(ManifestGenerateCommand),
     ManifestSign(ManifestSignCommand),
     ManifestVerify(ManifestVerifyCommand),
-    ManifestDump(ManifestDumpCommand),
 }
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct ManifestGenerateCommand {}
+pub struct PubkeyCommand {
+    privkey: Option<Privkey>,
+}
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct ManifestSignCommand {}
+pub struct SecretCommand {
+    privkey: Option<Privkey>,
+}
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct ManifestVerifyCommand {}
+pub struct ManifestSignCommand {
+    #[structopt(long, short)]
+    privkey: Option<Privkey>,
+    file: Option<PathBuf>,
+}
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct ManifestDumpCommand {}
+pub struct ManifestVerifyCommand {
+    #[structopt(long, short)]
+    pubkey: Option<Pubkey>,
+    file: Option<PathBuf>,
+}
 
 #[derive(StructOpt, Debug, Clone)]
 pub struct CreateCommand {
@@ -146,6 +160,13 @@ pub struct FetchCommand {
 
     /// File to save to, if none specified, piped to standard output.
     file: Option<PathBuf>,
+}
+
+async fn read_privkey() -> Result<Privkey> {
+    let mut stdin = BufReader::new(tokio::io::stdin());
+    let mut lines = stdin.lines();
+    let line = lines.next_line().await?.ok_or(anyhow!("Error: no input"))?;
+    Ok(Privkey::from_str(&line)?)
 }
 
 impl Options {
@@ -276,10 +297,31 @@ impl Options {
                 }
                 Ok(())
             }
-            Command::ManifestGenerate(opts) => Ok(()),
             Command::ManifestSign(opts) => Ok(()),
             Command::ManifestVerify(opts) => Ok(()),
-            Command::ManifestDump(opts) => Ok(()),
+            Command::Privkey => {
+                let privkey = Privkey::generate();
+                println!("{privkey}");
+                Ok(())
+            }
+            Command::Pubkey(opts) => {
+                let privkey = match opts.privkey {
+                    Some(privkey) => privkey,
+                    None => read_privkey().await?,
+                };
+                let pubkey = privkey.pubkey();
+                println!("{pubkey}");
+                Ok(())
+            }
+            Command::Secret(opts) => {
+                let privkey = match opts.privkey {
+                    Some(privkey) => privkey,
+                    None => read_privkey().await?,
+                };
+                let secret = privkey.derive_secret();
+                println!("{secret}");
+                Ok(())
+            }
         }
     }
 }
