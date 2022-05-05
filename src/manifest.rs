@@ -14,7 +14,7 @@ pub struct Parent {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct SnapshotManifest {
+pub struct Manifest {
     /// Time that this snapshot was created.
     pub creation: u64,
     /// Machine that this snapshot was created on.
@@ -29,12 +29,12 @@ pub struct SnapshotManifest {
     pub data: Url,
 }
 
-impl SnapshotManifest {
+impl Manifest {
     pub fn encode(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
     }
 
-    pub fn decode(data: &[u8]) -> Result<SnapshotManifest, Box<bincode::ErrorKind>> {
+    pub fn decode(data: &[u8]) -> Result<Manifest, Box<bincode::ErrorKind>> {
         bincode::deserialize(data)
     }
 
@@ -76,7 +76,7 @@ impl SnapshotManifest {
 
 #[test]
 fn manifest_encode_decode() {
-    let manifest = SnapshotManifest {
+    let manifest = Manifest {
         creation: 124123,
         machine: Uuid::new_v4(),
         size: 123412,
@@ -87,14 +87,14 @@ fn manifest_encode_decode() {
             .unwrap(),
     };
     let encoded = manifest.encode();
-    let decoded = SnapshotManifest::decode(&encoded).unwrap();
+    let decoded = Manifest::decode(&encoded).unwrap();
     assert_eq!(manifest, decoded);
 }
 
 #[test]
 fn manifest_sign_and_verify() {
     let privkey = Privkey::generate();
-    let manifest = SnapshotManifest {
+    let manifest = Manifest {
         creation: 124123,
         machine: Uuid::new_v4(),
         size: 123412,
@@ -106,15 +106,15 @@ fn manifest_sign_and_verify() {
     };
 
     let encoded = manifest.encode();
-    let signature = SnapshotManifest::signature(&encoded, &privkey);
-    let validated = SnapshotManifest::validate(&encoded, &signature, &privkey.pubkey());
+    let signature = Manifest::signature(&encoded, &privkey);
+    let validated = Manifest::validate(&encoded, &signature, &privkey.pubkey());
     assert!(validated.is_ok());
 }
 
 #[test]
 fn manifest_sign_split() {
     let privkey = Privkey::generate();
-    let manifest = SnapshotManifest {
+    let manifest = Manifest {
         creation: 124123,
         machine: Uuid::new_v4(),
         size: 123412,
@@ -126,7 +126,7 @@ fn manifest_sign_split() {
     };
 
     let data = manifest.signed(&privkey);
-    let (encoded, signature) = SnapshotManifest::split(&data).unwrap();
+    let (encoded, signature) = Manifest::split(&data).unwrap();
     assert_eq!(encoded, manifest.encode());
-    assert_eq!(signature, SnapshotManifest::signature(encoded, &privkey));
+    assert_eq!(signature, Manifest::signature(encoded, &privkey));
 }
