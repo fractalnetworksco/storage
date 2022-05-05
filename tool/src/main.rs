@@ -8,7 +8,7 @@ use std::pin::Pin;
 use std::str::FromStr;
 use storage_api::{
     keys::{Privkey, Secret},
-    SnapshotHeader, Storage,
+    SnapshotHeader,
 };
 use structopt::StructOpt;
 use tokio::fs::File;
@@ -173,31 +173,33 @@ impl Options {
                     println!("privkey {}", privkey);
                     privkey
                 });
-                let result = self.server().create(&client, &privkey).await?;
+                let result = storage_api::create(&self.server(), &client, &privkey).await?;
                 if result {
                     println!("pubkey {}", privkey.pubkey());
                 }
                 Ok(())
             }
             Command::List(opts) => {
-                let result = self
-                    .server()
-                    .list(
-                        &client,
-                        &opts.privkey.pubkey(),
-                        opts.parent,
-                        opts.genmin,
-                        opts.genmax,
-                    )
-                    .await?;
+                let result = storage_api::list(
+                    &self.server(),
+                    &client,
+                    &opts.privkey.pubkey(),
+                    opts.parent,
+                    opts.genmin,
+                    opts.genmax,
+                )
+                .await?;
                 println!("{:#?}", result);
                 Ok(())
             }
             Command::Latest(opts) => {
-                let result = self
-                    .server()
-                    .latest(&client, &opts.privkey.pubkey(), opts.parent)
-                    .await?;
+                let result = storage_api::latest(
+                    &self.server(),
+                    &client,
+                    &opts.privkey.pubkey(),
+                    opts.parent,
+                )
+                .await?;
                 println!("{:#?}", result);
                 Ok(())
             }
@@ -213,10 +215,9 @@ impl Options {
                     None => Box::pin(stdin()),
                 };
 
-                let result = self
-                    .server()
-                    .upload(&client, &opts.privkey, &header, input)
-                    .await?;
+                let result =
+                    storage_api::upload(&self.server(), &client, &opts.privkey, &header, input)
+                        .await?;
 
                 println!("{:#?}", result);
                 Ok(())
@@ -259,10 +260,14 @@ impl Options {
                 Ok(())
             }
             Command::Fetch(opts) => {
-                let (header, mut stream) = self
-                    .server()
-                    .fetch(&client, &opts.privkey, opts.generation, opts.parent)
-                    .await?;
+                let (header, mut stream) = storage_api::fetch(
+                    &self.server(),
+                    &client,
+                    &opts.privkey,
+                    opts.generation,
+                    opts.parent,
+                )
+                .await?;
                 let mut stdout = tokio::io::stdout();
                 eprintln!("{:#?}", header);
                 while let Some(data) = stream.next().await {
