@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
 
-pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
+pub const MANIFEST_SIGNATURE_LENGTH: usize = 64;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Parent {
@@ -48,6 +48,13 @@ impl SnapshotManifest {
         signature
     }
 
+    pub fn signed(&self, privkey: &Privkey) -> Vec<u8> {
+        let mut encoded = self.encode();
+        let mut signature = Self::signature(&encoded, privkey);
+        encoded.append(&mut signature);
+        encoded
+    }
+
     pub fn validate(manifest: &[u8], signature: &[u8], pubkey: &Pubkey) -> Result<()> {
         let pubkey = PublicKey::from_bytes(pubkey.as_slice())?;
         let signature = Signature::from_bytes(signature)?;
@@ -56,13 +63,13 @@ impl SnapshotManifest {
     }
 
     pub fn split(data: &[u8]) -> Option<(&[u8], &[u8])> {
-        if data.len() < 64 {
+        if data.len() < MANIFEST_SIGNATURE_LENGTH {
             return None;
         }
 
         Some((
-            &data[0..data.len() - 64],
-            &data[data.len() - 64..data.len()],
+            &data[0..data.len() - MANIFEST_SIGNATURE_LENGTH],
+            &data[data.len() - MANIFEST_SIGNATURE_LENGTH..data.len()],
         ))
     }
 }
@@ -102,4 +109,24 @@ fn manifest_sign_and_verify() {
     let signature = SnapshotManifest::signature(&encoded, &privkey);
     let validated = SnapshotManifest::validate(&encoded, &signature, &privkey.pubkey());
     assert!(validated.is_ok());
+}
+
+#[test]
+fn manifest_sign_split() {
+    let privkey = Privkey::generate();
+    let manifest = SnapshotManifest {
+        creation: 124123,
+        machine: Uuid::new_v4(),
+        size: 123412,
+        size_total: 12341241,
+        parent: None,
+        data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
+            .try_into()
+            .unwrap(),
+    };
+
+    let data = manifest.signed(&privkey);
+    let (encoded, signature) = SnapshotManifest::split(&data).unwrap();
+    assert_eq!(encoded, manifest.encode());
+    assert_eq!(signature, SnapshotManifest::signature(encoded, &privkey));
 }
