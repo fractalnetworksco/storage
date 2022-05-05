@@ -85,7 +85,7 @@ async fn main() {
     let jwks = options.jwks.to_string();
     info!("Fetching JWKS from {}", &jwks);
     let key_store = key_store(&jwks).await.unwrap();
-    let mut auth_config = AuthConfig::new(key_store);
+    let mut auth_config = AuthConfig::new().with_keystore(key_store);
 
     rocket::build()
         .mount("/", api::routes())
