@@ -15,11 +15,12 @@ fn ipfs_client() -> IpfsClient {
 /// check it, and finally make sure that what we got back matches what we sent.
 async fn test_ipfs_upload_data(ipfs_client: &IpfsClient, secret: &Secret, data: &[u8]) {
     let data_bytes = Bytes::copy_from_slice(&data);
-    let stream = stream::iter(vec![Ok(data_bytes)]);
+    let stream = stream::iter(vec![Ok(Bytes::new()), Ok(data_bytes), Ok(Bytes::new())]);
     let stream = Box::pin(stream);
     let cid = ipfs::upload_encrypt(&ipfs_client, &secret, stream)
         .await
         .unwrap();
+    println!("Uploaded CID: {cid}");
     let stream = ipfs::fetch_decrypt(&ipfs_client, &secret, &cid)
         .await
         .unwrap();
@@ -28,6 +29,7 @@ async fn test_ipfs_upload_data(ipfs_client: &IpfsClient, secret: &Secret, data: 
         .try_concat()
         .await
         .unwrap();
+    println!("Got data: {stream_data:?}");
     assert_eq!(stream_data, data);
 }
 
@@ -35,9 +37,11 @@ async fn test_ipfs_upload_data(ipfs_client: &IpfsClient, secret: &Secret, data: 
 #[ignore]
 async fn test_ipfs_upload() {
     let privkey = Privkey::generate();
+    println!("Generated privkey {privkey}");
     let secret = privkey.derive_secret();
     let ipfs_client = ipfs_client();
     test_ipfs_upload_data(&ipfs_client, &secret, &[12, 21, 24, 102]).await;
     test_ipfs_upload_data(&ipfs_client, &secret, &[42; 1024]).await;
     test_ipfs_upload_data(&ipfs_client, &secret, &[123, 123, 123, 123, 123, 123]).await;
+    test_ipfs_upload_data(&ipfs_client, &secret, &[104, 101, 108, 108, 111]).await;
 }
