@@ -2,7 +2,6 @@ use crate::keys::{Privkey, Pubkey, Secret};
 use anyhow::Result;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bytes::{Bytes, BytesMut};
-use ed25519_dalek_fiat::{ExpandedSecretKey, PublicKey, SecretKey};
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
@@ -13,44 +12,6 @@ use std::pin::Pin;
 use uuid::Uuid;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SnapshotManifest {
-    /// Time that this snapshot was created.
-    pub creation: u64,
-    /// Machine that this snapshot was created on.
-    pub machine: Uuid,
-    /// Size of this snapshot, in bytes.
-    pub size: u64,
-    /// Size of this snapshot and the previous ones.
-    pub size_total: u64,
-    /// Volume of parent snapshot (if different).
-    pub parent_volume: Option<Pubkey>,
-    /// Hash of parent snapshot (if not root snapshot).
-    pub parent_hash: Option<Vec<u8>>,
-    /// Decryption key of parent snapshot (if needed), xored with current decryption key.
-    pub parent_key: Option<Secret>,
-    /// IPFS CID of data.
-    pub data: String,
-}
-
-impl SnapshotManifest {
-    pub fn encode(&self) -> Vec<u8> {
-        bincode::serialize(self).unwrap()
-    }
-
-    pub fn sign(&self, privkey: &Privkey) -> Result<Vec<u8>> {
-        let data = self.encode();
-
-        let secret_key = SecretKey::from_bytes(privkey.as_slice()).unwrap();
-        let public_key: PublicKey = (&secret_key).into();
-        let secret_key: ExpandedSecretKey = (&secret_key).into();
-
-        let signature = secret_key.sign(&data, &public_key);
-        let signature = signature.to_bytes().to_vec();
-        Ok(signature)
-    }
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct SnapshotInfo {

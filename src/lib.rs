@@ -2,6 +2,7 @@ pub mod chacha20;
 pub mod ed25519;
 mod ipfs;
 pub mod keys;
+mod manifest;
 #[cfg(test)]
 mod tests;
 mod types;
@@ -9,6 +10,7 @@ mod types;
 use crate::chacha20::{DecryptionStream, EncryptionStream};
 pub use crate::ipfs::*;
 use crate::keys::{Privkey, Pubkey, Secret};
+pub use crate::manifest::*;
 pub use crate::types::*;
 use anyhow::Result;
 use async_trait::async_trait;
