@@ -1,4 +1,4 @@
-use crate::info::Snapshot;
+use crate::snapshot::Snapshot;
 use anyhow::Result;
 use fractal_auth_client::UserContext;
 use rocket::serde::uuid::Uuid;

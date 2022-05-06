@@ -1,6 +1,6 @@
 mod api;
-mod db;
-mod info;
+mod snapshot;
+mod volume;
 
 use fractal_auth_client::{key_store, AuthConfig, KeyStore};
 use rocket::fs::TempFile;

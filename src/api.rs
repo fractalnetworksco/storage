@@ -1,5 +1,5 @@
-use crate::db::Volume;
-use crate::info::{Snapshot, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
+use crate::snapshot::{Snapshot, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
+use crate::volume::Volume;
 use crate::Options;
 use fractal_auth_client::UserContext;
 use rocket::{

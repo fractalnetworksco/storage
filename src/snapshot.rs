@@ -1,4 +1,4 @@
-use crate::db::Volume;
+use crate::volume::Volume;
 use anyhow::Result;
 use byteorder::{BigEndian, ReadBytesExt};
 use serde::{Deserialize, Serialize};
