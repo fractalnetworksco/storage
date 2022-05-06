@@ -2,6 +2,7 @@ use crate::snapshot::{Snapshot, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
 use crate::volume::Volume;
 use crate::Options;
 use fractal_auth_client::UserContext;
+use rocket::http::Accept;
 use rocket::{
     data::{ByteUnit, ToByteUnit},
     fs::TempFile,
@@ -45,10 +46,6 @@ impl<'r> Responder<'r, 'static> for StorageError {
     }
 }
 
-pub fn snapshot_size_max() -> ByteUnit {
-    1.terabytes()
-}
-
 #[post("/volume/<volume>")]
 async fn volume_create(
     context: UserContext,
@@ -59,81 +56,36 @@ async fn volume_create(
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
     Volume::create(&mut conn, &volume, &context.account())
         .await
-        .unwrap();
+        .map_err(|_| StorageError::Internal)?;
     Ok(())
 }
 
 #[post("/volume/<volume>/snapshot", data = "<data>")]
-async fn snapshot_upload(
+async fn volume_snapshot_upload(
     data: Vec<u8>,
     pool: &State<AnyPool>,
     options: &State<Options>,
     volume: Pubkey,
 ) -> Result<Json<SnapshotInfo>, StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
-    //.ok_or(|_| StorageError::VolumeNotFound)?;
-
     let (manifest, signature) = Manifest::split(&data).ok_or(StorageError::ManifestInvalid)?;
-
     Manifest::validate(manifest, signature, &volume).unwrap();
-
+    let manifest = Manifest::decode(manifest).map_err(|_| StorageError::ManifestInvalid)?;
     let volume_data = Volume::lookup(&mut conn, &volume)
         .await
         .map_err(|_| StorageError::Internal)?;
-
-    /*
-    // parse header from snapshot data
-    let header = data.peek(SNAPSHOT_HEADER_SIZE).await;
-    let header = SnapshotHeader::from_bytes(header).unwrap();
-
-    // TODO: check if snapshot exists
-    if let Ok(Some(info)) =
-        Snapshot::lookup(pool, volume.pubkey(), header.generation, header.parent).await
-    {
-        // TODO: make this return an error
-        return Ok(Json(info.to_info()));
-    }
-
-    // open the entire data stream
-    let data = data.open(snapshot_size_max());
-
-    // write data stream to file
-    let header_path = header.path(volume.pubkey());
-    let path = options.storage.path().join(header_path.clone());
-    let mut file = File::create(&path).await.unwrap();
-    data.stream_to(tokio::io::BufWriter::new(&mut file)).await?;
-    // TODO: generate hash to check signature
-
-    let info = header.to_info(file.metadata().await?.len());
-    volume
-        .register(pool, &info, &header_path.to_str().unwrap())
-        .await
-        .unwrap();
-    Ok(Json(info))
-    */
     unimplemented!()
 }
 
-#[get("/volume/<volume>/latest?<parent>")]
-async fn snapshot_latest(
-    pool: &State<AnyPool>,
-    parent: Option<u64>,
-    volume: Pubkey,
-) -> Json<Option<SnapshotInfo>> {
-    let mut conn = pool.acquire().await.unwrap();
-    let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
-    let latest = Snapshot::latest(&mut conn, &volume, parent).await.unwrap();
-    Json(latest.map(|inner| inner.to_info()))
-}
-
-#[get("/volume/<volume>/list?<parent>&<genmin>&<genmax>")]
-async fn snapshot_list(
+#[get("/volume/<volume>/snapshots?<parent>&<genmin>&<genmax>")]
+async fn volume_snapshot_list(
     pool: &State<AnyPool>,
     parent: Option<u64>,
     genmin: Option<u64>,
     genmax: Option<u64>,
     volume: Pubkey,
 ) -> Json<Vec<SnapshotInfo>> {
+    /*
     let mut conn = pool.acquire().await.unwrap();
     let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
     let info = Snapshot::list(&mut conn, &volume, parent, genmin, genmax)
@@ -143,34 +95,26 @@ async fn snapshot_list(
         .map(|row| row.to_info())
         .collect();
     Json(info)
+    */
+    unimplemented!()
 }
 
-#[get("/volume/<volume>/fetch?<generation>&<parent>")]
-async fn snapshot_fetch(
+#[get("/volume/<volume>/snapshot/<snapshot>?<format>")]
+async fn volume_snapshot_get(
     pool: &State<AnyPool>,
     options: &State<Options>,
     volume: Pubkey,
-    generation: u64,
-    parent: Option<u64>,
-) -> ReaderStream![File] {
-    let mut conn = pool.acquire().await.unwrap();
-    let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
-    let snapshot = volume
-        .snapshot(&mut conn, generation, parent)
-        .await
-        .unwrap()
-        .unwrap();
-    let path = options.storage.path().join(snapshot.file());
-    let file = File::open(path).await.unwrap();
-    ReaderStream::one(file)
+    snapshot: String,
+    format: Option<String>,
+) -> Result<Vec<u8>, StorageError> {
+    unimplemented!()
 }
 
 pub fn routes() -> Vec<Route> {
     routes![
         volume_create,
-        snapshot_upload,
-        snapshot_latest,
-        snapshot_list,
-        snapshot_fetch
+        volume_snapshot_upload,
+        volume_snapshot_get,
+        volume_snapshot_list,
     ]
 }
