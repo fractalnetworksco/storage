@@ -31,6 +31,7 @@ ipfs-api = { version = "0.15.0", git = "https://github.com/xfbs/rust-ipfs-api" }
 ipfs-api-backend-hyper = { version = "0.4.0", git = "https://github.com/xfbs/rust-ipfs-api", features = ["with-send-sync"] }
 cid = { version = "0.8.4", features = ["serde-codec"] }
 bincode = "1.3.3"
+rocket = { version = "0.5.0-rc.1", optional = true }
 
 [features]
 default = ["tokio", "tokio-util/io", "tokio-util/compat", "tokio-stream", "hex", "base64"]
