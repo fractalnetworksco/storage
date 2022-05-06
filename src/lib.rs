@@ -1,15 +1,9 @@
-pub mod chacha20;
-pub mod ed25519;
-mod ipfs;
-pub mod keys;
-mod manifest;
-#[cfg(test)]
-mod tests;
-mod types;
+//! Library used to interact with storage backend and IPFS (to store
+//! encrypted snapshots and manage metadata).
 
-use crate::chacha20::{DecryptionStream, EncryptionStream};
+pub use crate::chacha20::{DecryptionStream, EncryptionStream};
 pub use crate::ipfs::*;
-use crate::keys::{Privkey, Pubkey, Secret};
+pub use crate::keys::{Privkey, Pubkey, Secret};
 pub use crate::manifest::*;
 pub use crate::types::*;
 use anyhow::Result;
@@ -23,6 +17,15 @@ use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
 use tokio_util::io::ReaderStream;
 use url::Url;
+
+pub mod chacha20;
+pub mod ed25519;
+mod ipfs;
+pub mod keys;
+mod manifest;
+#[cfg(test)]
+mod tests;
+mod types;
 
 /// Fetch latest (as in, most current generation) based on the parent
 /// generation that is passed.
