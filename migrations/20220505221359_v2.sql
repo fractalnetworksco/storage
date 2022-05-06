@@ -13,11 +13,13 @@ CREATE TABLE storage_volume(
 CREATE TABLE storage_snapshot(
     snapshot_id INTEGER PRIMARY KEY NOT NULL,
     -- volume this snapshot belongs to
-    volume_id INTEGER NOT NULL,
+    volume_id INTEGER NOT NULL REFERENCES storage_volume(volume_id) ON DELETE CASCADE,
     -- manifest of this snapshot
     snapshot_manifest BLOB NOT NULL,
     -- signature of manifest
     snapshot_signature BLOB NOT NULL,
     -- manifest hash (used as unique identifier)
-    snapshot_hash BLOB UNIQUE NOT NULL
+    snapshot_hash BLOB UNIQUE NOT NULL,
+    -- pointer to parent snapshot
+    snapshot_parent INTEGER REFERENCES storage_snapshot(snapshot_id) ON DELETE CASCADE
 );
