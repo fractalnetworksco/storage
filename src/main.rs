@@ -73,7 +73,7 @@ async fn main() {
         .into_os_string()
         .into_string()
         .unwrap();
-    let pool = sqlx::SqlitePool::connect(&database_path).await.unwrap();
+    let pool = sqlx::AnyPool::connect(&database_path).await.unwrap();
     sqlx::migrate!().run(&pool).await.unwrap();
 
     // make sure storage folder exists

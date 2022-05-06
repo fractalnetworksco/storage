@@ -1,37 +1,87 @@
 use crate::db::Volume;
 use crate::info::{Snapshot, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
 use crate::Options;
-use rocket::data::{ByteUnit, ToByteUnit};
-use rocket::fs::TempFile;
-use rocket::response::stream::ReaderStream;
-use rocket::serde::json::Json;
-use rocket::*;
-use sqlx::{query, SqlitePool};
-use storage_api::SnapshotInfo;
+use fractal_auth_client::UserContext;
+use rocket::{
+    data::{ByteUnit, ToByteUnit},
+    fs::TempFile,
+    http::Status,
+    request::{FromParam, Request},
+    response::stream::ReaderStream,
+    response::{self, Responder, Response},
+    serde::json::Json,
+    *,
+};
+use sqlx::{query, AnyPool};
+use std::io::Cursor;
+use storage_api::{Manifest, Pubkey, SnapshotInfo};
+use thiserror::Error;
 use tokio::fs::File;
-use wireguard_keys::Pubkey;
+
+#[derive(Error, Debug, Clone)]
+pub enum StorageError {
+    #[error("Volume not found for user")]
+    VolumeNotFound,
+    #[error("Internal Error")]
+    Internal,
+    #[error("Manifest Invalid")]
+    ManifestInvalid,
+}
+
+impl<'r> Responder<'r, 'static> for StorageError {
+    fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
+        use StorageError::*;
+        let status = match self {
+            VolumeNotFound => Status::NotFound,
+            Internal => Status::InternalServerError,
+            ManifestInvalid => Status::BadRequest,
+        };
+        let message = self.to_string();
+        let response = Response::build()
+            .sized_body(message.len(), Cursor::new(message))
+            .status(status)
+            .ok();
+        response
+    }
+}
 
 pub fn snapshot_size_max() -> ByteUnit {
     1.terabytes()
 }
 
-#[post("/snapshot/<volume>/create")]
-async fn volume_create(pool: &State<SqlitePool>, options: &State<Options>, volume: Pubkey) -> () {
-    Volume::create(pool, &volume).await.unwrap();
-    let path = options.storage.path().join(volume.to_hex());
-    tokio::fs::create_dir_all(path).await.unwrap();
-    ()
-}
-
-#[post("/snapshot/<volume>/upload", data = "<data>")]
-async fn snapshot_upload(
-    mut data: Data<'_>,
-    pool: &State<SqlitePool>,
+#[post("/volume/<volume>")]
+async fn volume_create(
+    context: UserContext,
+    pool: &State<AnyPool>,
     options: &State<Options>,
     volume: Pubkey,
-) -> std::io::Result<Json<SnapshotInfo>> {
-    let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
+) -> Result<(), StorageError> {
+    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    Volume::create(&mut conn, &volume, &context.account())
+        .await
+        .unwrap();
+    Ok(())
+}
 
+#[post("/volume/<volume>/snapshot", data = "<data>")]
+async fn snapshot_upload(
+    data: Vec<u8>,
+    pool: &State<AnyPool>,
+    options: &State<Options>,
+    volume: Pubkey,
+) -> Result<Json<SnapshotInfo>, StorageError> {
+    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    //.ok_or(|_| StorageError::VolumeNotFound)?;
+
+    let (manifest, signature) = Manifest::split(&data).ok_or(StorageError::ManifestInvalid)?;
+
+    Manifest::validate(manifest, signature, &volume).unwrap();
+
+    let volume_data = Volume::lookup(&mut conn, &volume)
+        .await
+        .map_err(|_| StorageError::Internal)?;
+
+    /*
     // parse header from snapshot data
     let header = data.peek(SNAPSHOT_HEADER_SIZE).await;
     let header = SnapshotHeader::from_bytes(header).unwrap();
@@ -60,29 +110,33 @@ async fn snapshot_upload(
         .await
         .unwrap();
     Ok(Json(info))
+    */
+    unimplemented!()
 }
 
-#[get("/snapshot/<volume>/latest?<parent>")]
+#[get("/volume/<volume>/latest?<parent>")]
 async fn snapshot_latest(
-    pool: &State<SqlitePool>,
+    pool: &State<AnyPool>,
     parent: Option<u64>,
     volume: Pubkey,
 ) -> Json<Option<SnapshotInfo>> {
-    let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
-    let latest = Snapshot::latest(pool, &volume, parent).await.unwrap();
+    let mut conn = pool.acquire().await.unwrap();
+    let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
+    let latest = Snapshot::latest(&mut conn, &volume, parent).await.unwrap();
     Json(latest.map(|inner| inner.to_info()))
 }
 
-#[get("/snapshot/<volume>/list?<parent>&<genmin>&<genmax>")]
+#[get("/volume/<volume>/list?<parent>&<genmin>&<genmax>")]
 async fn snapshot_list(
-    pool: &State<SqlitePool>,
+    pool: &State<AnyPool>,
     parent: Option<u64>,
     genmin: Option<u64>,
     genmax: Option<u64>,
     volume: Pubkey,
 ) -> Json<Vec<SnapshotInfo>> {
-    let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
-    let info = Snapshot::list(pool, &volume, parent, genmin, genmax)
+    let mut conn = pool.acquire().await.unwrap();
+    let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
+    let info = Snapshot::list(&mut conn, &volume, parent, genmin, genmax)
         .await
         .unwrap()
         .into_iter()
@@ -91,17 +145,18 @@ async fn snapshot_list(
     Json(info)
 }
 
-#[get("/snapshot/<volume>/fetch?<generation>&<parent>")]
+#[get("/volume/<volume>/fetch?<generation>&<parent>")]
 async fn snapshot_fetch(
-    pool: &State<SqlitePool>,
+    pool: &State<AnyPool>,
     options: &State<Options>,
     volume: Pubkey,
     generation: u64,
     parent: Option<u64>,
 ) -> ReaderStream![File] {
-    let volume = Volume::lookup(pool, &volume).await.unwrap().unwrap();
+    let mut conn = pool.acquire().await.unwrap();
+    let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
     let snapshot = volume
-        .snapshot(pool, generation, parent)
+        .snapshot(&mut conn, generation, parent)
         .await
         .unwrap()
         .unwrap();

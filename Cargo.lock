@@ -759,7 +759,7 @@ dependencies = [
  "serde",
  "thiserror",
  "url",
- "uuid",
+ "uuid 0.8.2",
 ]
 
 [[package]]
@@ -1152,7 +1152,7 @@ dependencies = [
 [[package]]
 name = "ipfs-api"
 version = "0.15.0"
-source = "git+https://github.com/xfbs/rust-ipfs-api#eb90f65dab9cad257831a4907b41824ea4fe8ff1"
+source = "git+https://github.com/xfbs/rust-ipfs-api#63559a7b35912837d593230743910c75b04e3374"
 dependencies = [
  "ipfs-api-backend-hyper",
 ]
@@ -1160,7 +1160,7 @@ dependencies = [
 [[package]]
 name = "ipfs-api-backend-hyper"
 version = "0.4.0"
-source = "git+https://github.com/xfbs/rust-ipfs-api#eb90f65dab9cad257831a4907b41824ea4fe8ff1"
+source = "git+https://github.com/xfbs/rust-ipfs-api#63559a7b35912837d593230743910c75b04e3374"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1175,7 +1175,7 @@ dependencies = [
 [[package]]
 name = "ipfs-api-prelude"
 version = "0.4.0"
-source = "git+https://github.com/xfbs/rust-ipfs-api#eb90f65dab9cad257831a4907b41824ea4fe8ff1"
+source = "git+https://github.com/xfbs/rust-ipfs-api#63559a7b35912837d593230743910c75b04e3374"
 dependencies = [
  "async-trait",
  "bytes",
@@ -1790,9 +1790,9 @@ checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.37"
+version = "1.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec757218438d5fda206afc041538b2f6d889286160d649a86a24d37e1235afd1"
+checksum = "9027b48e9d4c9175fa2218adf3557f91c1137021739951d4932f5f8268ac48aa"
 dependencies = [
  "unicode-xid",
 ]
@@ -2025,7 +2025,7 @@ dependencies = [
  "tokio-stream",
  "tokio-util 0.6.9",
  "ubyte",
- "uuid",
+ "uuid 0.8.2",
  "version_check",
  "yansi",
 ]
@@ -2072,7 +2072,7 @@ dependencies = [
  "time 0.2.27",
  "tokio",
  "uncased",
- "uuid",
+ "uuid 0.8.2",
 ]
 
 [[package]]
@@ -2657,15 +2657,16 @@ dependencies = [
  "sqlx",
  "storage-api",
  "structopt",
+ "thiserror",
  "tokio",
  "url",
- "wireguard-keys",
+ "uuid 1.0.0",
 ]
 
 [[package]]
 name = "storage-api"
 version = "0.1.0"
-source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#a9e55ab9ba56b448fdcdf89db7da6a513a749ae7"
+source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#e5e6f33144ebf8841e9f06e37e07aea7c468d06b"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2685,13 +2686,14 @@ dependencies = [
  "paste",
  "rand_core",
  "reqwest",
+ "rocket",
  "serde",
  "thiserror",
  "tokio",
  "tokio-stream",
  "tokio-util 0.6.9",
  "url",
- "uuid",
+ "uuid 0.8.2",
  "zeroize",
 ]
 
@@ -3199,6 +3201,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "uuid"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
+
+[[package]]
 name = "valuable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3423,34 +3431,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "80d0f4e272c85def139476380b12f9ac60926689dd2e01d4923222f40580869d"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "wireguard-keys"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8539f9e85620b2285bca0e651599107c304765a73a107da124303b9aac551d"
-dependencies = [
- "base64 0.13.0",
- "hex",
- "paste",
- "rand_core",
- "rocket",
- "serde",
- "thiserror",
- "x25519-dalek-fiat",
- "zeroize",
-]
-
-[[package]]
-name = "x25519-dalek-fiat"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f3519d56987103ef084eba6ddfc3be45b7eaee08f2d60bc8495cdca30362a32"
-dependencies = [
- "curve25519-dalek-fiat",
- "rand_core",
- "zeroize",
 ]
 
 [[package]]
