@@ -23,7 +23,7 @@ pub enum SnapshotError {
     MissingRowid,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Snapshot(i64);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -58,7 +58,7 @@ impl SnapshotExt for SnapshotData {
 impl SnapshotData {
     pub fn from_row(row: &AnyRow) -> Result<Self, SnapshotError> {
         let id: i64 = row.try_get("snapshot_id")?;
-        let volume: i64 = row.try_get("snapshot_volume")?;
+        let volume: i64 = row.try_get("volume_id")?;
         let hash: Vec<u8> = row.try_get("snapshot_hash")?;
         let parent: Option<i64> = row.try_get("snapshot_parent")?;
         let manifest: Vec<u8> = row.try_get("snapshot_manifest")?;
@@ -83,6 +83,10 @@ impl SnapshotData {
 
     pub fn signature(&self) -> &[u8] {
         &self.signature
+    }
+
+    pub fn hash(&self) -> &[u8] {
+        &self.hash
     }
 }
 
@@ -232,7 +236,14 @@ async fn test_snapshot_create() {
     let manifest = vec![66; 60];
     let signature = vec![14; 24];
     let hash = vec![12; 16];
-    Snapshot::create(&mut conn, &volume, &manifest, &signature, &hash, None)
+    let snapshot = Snapshot::create(&mut conn, &volume, &manifest, &signature, &hash, None)
         .await
         .unwrap();
+
+    let snapshot_data = snapshot.fetch(&mut conn).await.unwrap();
+    assert_eq!(snapshot_data.snapshot(), snapshot);
+
+    assert_eq!(snapshot_data.manifest(), manifest);
+    assert_eq!(snapshot_data.signature(), signature);
+    assert_eq!(snapshot_data.hash(), hash);
 }
