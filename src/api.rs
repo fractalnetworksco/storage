@@ -1,4 +1,4 @@
-use crate::snapshot::{Snapshot, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
+use crate::snapshot::{Snapshot, SnapshotError, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
 use crate::volume::Volume;
 use crate::Options;
 use fractal_auth_client::UserContext;
@@ -19,14 +19,20 @@ use storage_api::{Manifest, Pubkey, SnapshotInfo};
 use thiserror::Error;
 use tokio::fs::File;
 
-#[derive(Error, Debug, Clone)]
+#[derive(Error, Debug)]
 pub enum StorageError {
     #[error("Volume not found for user")]
     VolumeNotFound,
     #[error("Internal Error")]
     Internal,
+    #[error("Internal Error: {0:}")]
+    Snapshot(#[from] SnapshotError),
     #[error("Manifest Invalid")]
     ManifestInvalid,
+    #[error("Format invalid")]
+    FormatInvalid,
+    #[error("Snapshot not found")]
+    SnapshotNotFound,
 }
 
 impl<'r> Responder<'r, 'static> for StorageError {
@@ -36,6 +42,9 @@ impl<'r> Responder<'r, 'static> for StorageError {
             VolumeNotFound => Status::NotFound,
             Internal => Status::InternalServerError,
             ManifestInvalid => Status::BadRequest,
+            SnapshotNotFound => Status::NotFound,
+            FormatInvalid => Status::BadRequest,
+            Snapshot(_) => Status::InternalServerError,
         };
         let message = self.to_string();
         let response = Response::build()
@@ -107,7 +116,29 @@ async fn volume_snapshot_get(
     snapshot: String,
     format: Option<String>,
 ) -> Result<Vec<u8>, StorageError> {
-    unimplemented!()
+    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    let json = match format.as_deref() {
+        None => false,
+        Some("json") => true,
+        Some("raw") => false,
+        Some(_) => return Err(StorageError::FormatInvalid),
+    };
+    let hash = base64::decode(&snapshot).unwrap();
+    let snapshot = Snapshot::fetch_by_hash(&mut conn, &hash)
+        .await?
+        .ok_or(StorageError::SnapshotNotFound)?;
+    let snapshot = snapshot.fetch(&mut conn).await?;
+    match json {
+        true => {
+            unimplemented!()
+        }
+        false => {
+            let mut manifest = snapshot.manifest().to_vec();
+            // FIXME: append
+            //manifest.append(snapshot.signature());
+            Ok(manifest)
+        }
+    }
 }
 
 pub fn routes() -> Vec<Route> {

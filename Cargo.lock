@@ -2647,6 +2647,8 @@ name = "storage"
 version = "0.1.1"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "base64 0.13.0",
  "byteorder",
  "env_logger",
  "fractal-auth-client",

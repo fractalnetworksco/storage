@@ -1,4 +1,4 @@
-use crate::snapshot::Snapshot;
+use crate::snapshot::{Snapshot, SnapshotData};
 use anyhow::Result;
 use fractal_auth_client::UserContext;
 use rocket::serde::uuid::Uuid;
@@ -92,7 +92,7 @@ impl Volume {
         conn: &mut AnyConnection,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<Option<Snapshot>> {
+    ) -> Result<Option<SnapshotData>> {
         let row = query(
             "SELECT * FROM storage_snapshot
                 WHERE volume_id = ?
@@ -106,7 +106,7 @@ impl Volume {
         .await
         .unwrap();
         match row {
-            Some(row) => Ok(Some(Snapshot::from_row(&row)?)),
+            Some(row) => Ok(Some(SnapshotData::from_row(&row)?)),
             None => Ok(None),
         }
     }

@@ -19,6 +19,8 @@ fractal-auth-client = { git = "https://gitlab.com/fractalnetworks/fractal-auth-c
 url = "2.2.2"
 thiserror = "1.0.31"
 uuid = "1.0.0"
+async-trait = "0.1.53"
+base64 = "0.13.0"
 
 [features]
 default = ["backend-local", "backend-s3"]
