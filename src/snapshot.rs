@@ -134,11 +134,10 @@ impl Snapshot {
         Manifest::validate(manifest, signature, volume.pubkey()).unwrap();
         let parsed = Manifest::decode(manifest).map_err(|_| SnapshotError::ManifestInvalid)?;
 
-        // FIXME: hash
-        let hash = &manifest[0..16]; //manifest.hash();
+        let hash = Manifest::hash(manifest);
 
         // FIXME: parent
-        let snapshot = Snapshot::create(conn, volume, manifest, signature, hash, None).await?;
+        let snapshot = Snapshot::create(conn, volume, manifest, signature, &hash, None).await?;
 
         Ok(snapshot)
     }
