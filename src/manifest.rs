@@ -2,6 +2,7 @@ use crate::keys::{Privkey, Pubkey, Secret};
 use anyhow::Result;
 use ed25519_dalek_fiat::{ExpandedSecretKey, PublicKey, SecretKey, Signature, Verifier};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha512};
 use url::Url;
 use uuid::Uuid;
 
@@ -47,6 +48,13 @@ impl Manifest {
         let signature = secret_key.sign(manifest, &public_key);
         let signature = signature.to_bytes().to_vec();
         signature
+    }
+
+    pub fn hash(manifest: &[u8]) -> Vec<u8> {
+        let mut hasher = Sha512::new();
+        hasher.update(&manifest);
+        let hash = hasher.finalize();
+        hash.to_vec()
     }
 
     pub fn signed(&self, privkey: &Privkey) -> Vec<u8> {
