@@ -18,7 +18,7 @@ rust-s3 = { version = "0.28.0", default-features = false, features = ["tokio-rus
 fractal-auth-client = { git = "https://gitlab.com/fractalnetworks/fractal-auth-client", branch = "v0.1", features = ["rocket"] }
 url = "2.2.2"
 thiserror = "1.0.31"
-uuid = "1.0.0"
+uuid = { version = "1.0.0", features = ["v4"] }
 async-trait = "0.1.53"
 base64 = "0.13.0"
 

@@ -1,10 +1,13 @@
 mod api;
 mod snapshot;
+#[cfg(test)]
+mod tests;
 mod volume;
 
 use fractal_auth_client::{key_store, AuthConfig, KeyStore};
 use rocket::fs::TempFile;
 use rocket::*;
+use sqlx::AnyPool;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use url::Url;
@@ -73,7 +76,7 @@ async fn main() {
         .into_os_string()
         .into_string()
         .unwrap();
-    let pool = sqlx::AnyPool::connect(&database_path).await.unwrap();
+    let pool = AnyPool::connect(&database_path).await.unwrap();
     sqlx::migrate!().run(&pool).await.unwrap();
 
     // make sure storage folder exists
@@ -95,10 +98,4 @@ async fn main() {
         .launch()
         .await
         .unwrap();
-}
-
-#[tokio::test]
-async fn test_migrations() {
-    let pool = sqlx::SqlitePool::connect(":memory:").await.unwrap();
-    sqlx::migrate!().run(&pool).await.unwrap();
 }
