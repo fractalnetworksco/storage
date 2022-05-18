@@ -155,7 +155,7 @@ impl Privkey {
 #[test]
 fn test_privkey_to_secret() {
     let privkey = Privkey::generate();
-    let secret = privkey.derive_secret();
+    let _secret = privkey.derive_secret();
 
     let privkey = Privkey::from_str("CHmZHrfC5uRMUs3J7qjmc4dl+32f157mfLdV9b5Ca2o=").unwrap();
     let secret = privkey.derive_secret();
