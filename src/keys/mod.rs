@@ -13,6 +13,8 @@ use serde::{
     de::{Error, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
+use serde_big_array::BigArray;
+use sha2::{Digest, Sha512};
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;
@@ -38,16 +40,19 @@ pub enum ParseError {
     Length,
 }
 
-/// Length (in bytes) of a WireGuard public key (ed25519).
+/// Length (in bytes) of an ed25519 public key.
 pub const PUBKEY_LEN: usize = 32;
 
-/// Length (in bytes) of a WireGuard private key (ed25519).
+/// Length (in bytes) of a ed25519 private key.
 pub const PRIVKEY_LEN: usize = 32;
 
-/// Length (in bytes) of a WireGuard preshared key.
+/// Length (in bytes) of a preshared key.
 pub const SECRET_LEN: usize = 32;
 
-/// WireGuard public key.
+/// Length (in bytes) of a sha256 hash digest.
+pub const HASH_LEN: usize = 64;
+
+/// ed25519 public key.
 #[cfg_attr(feature = "schema", derive(JsonSchema))]
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Zeroize)]
 pub struct Pubkey([u8; PUBKEY_LEN]);
@@ -61,14 +66,14 @@ impl_hex!(Pubkey);
 impl_base64!(Pubkey);
 #[cfg(feature = "base32")]
 impl_base32!(Pubkey);
-impl_parse!(Pubkey);
-impl_serde!(Pubkey, "WireGuard public key");
+impl_parse!(Pubkey, PUBKEY_LEN);
+impl_serde!(Pubkey, PUBKEY_LEN, "WireGuard public key");
 #[cfg(feature = "rocket")]
 impl_rocket!(Pubkey);
 
 impl Pubkey {
     #[cfg(test)]
-    fn generate() -> Pubkey {
+    fn test_generate() -> Pubkey {
         Privkey::generate().pubkey()
     }
 }
@@ -114,8 +119,8 @@ impl_hex!(Privkey);
 impl_base64!(Privkey);
 #[cfg(feature = "base32")]
 impl_base32!(Privkey);
-impl_parse!(Privkey);
-impl_serde!(Privkey, "WireGuard private key");
+impl_parse!(Privkey, PRIVKEY_LEN);
+impl_serde!(Privkey, PRIVKEY_LEN, "WireGuard private key");
 #[cfg(feature = "rocket")]
 impl_rocket!(Privkey);
 
@@ -124,6 +129,11 @@ impl Privkey {
     pub fn generate() -> Self {
         let private_key = SecretKey::generate(&mut OsRng);
         Privkey(private_key.to_bytes())
+    }
+
+    #[cfg(test)]
+    pub fn test_generate() -> Self {
+        Self::generate()
     }
 
     /// Generate the corresponding public key for this private key.
@@ -203,8 +213,8 @@ impl_hex!(Secret);
 impl_base64!(Secret);
 #[cfg(feature = "base32")]
 impl_base32!(Secret);
-impl_parse!(Secret);
-impl_serde!(Secret, "WireGuard preshared key");
+impl_parse!(Secret, SECRET_LEN);
+impl_serde!(Secret, SECRET_LEN, "WireGuard preshared key");
 #[cfg(feature = "rocket")]
 impl_rocket!(Secret);
 
@@ -214,6 +224,11 @@ impl Secret {
         let mut data = [0; SECRET_LEN];
         OsRng.fill_bytes(&mut data);
         Secret(data)
+    }
+
+    #[cfg(test)]
+    pub fn test_generate() -> Self {
+        Self::generate()
     }
 }
 
@@ -240,6 +255,68 @@ impl TryFrom<&[u8]> for Secret {
             let mut data = [0; PUBKEY_LEN];
             data[0..PUBKEY_LEN].copy_from_slice(&key[0..PUBKEY_LEN]);
             Ok(Secret(data))
+        }
+    }
+}
+
+#[cfg_attr(feature = "schema", derive(JsonSchema))]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Zeroize)]
+pub struct Hash([u8; HASH_LEN]);
+
+impl_new!(Hash, HASH_LEN);
+impl_display!(Hash);
+impl_deref!(Hash, HASH_LEN);
+#[cfg(feature = "hex")]
+impl_hex!(Hash);
+#[cfg(feature = "base64")]
+impl_base64!(Hash);
+#[cfg(feature = "base32")]
+impl_base32!(Hash);
+impl_parse!(Hash, HASH_LEN);
+impl_serde!(Hash, HASH_LEN, "Sha256 hash sum");
+#[cfg(feature = "rocket")]
+impl_rocket!(Hash);
+
+impl Hash {
+    pub fn generate(data: &[u8]) -> Self {
+        let mut hasher = Sha512::new();
+        hasher.update(data);
+        let hash = hasher.finalize();
+        let hash_ref: &[u8; 64] = hash.as_ref();
+        Hash(hash_ref.clone())
+    }
+
+    #[cfg(test)]
+    pub fn test_generate() -> Self {
+        let mut data = [0; HASH_LEN];
+        OsRng.fill_bytes(&mut data);
+        Hash(data)
+    }
+}
+
+#[test]
+fn test_hash_from_slice() {
+    let slice = [0; 3];
+    match Hash::try_from(&slice[..]) {
+        Err(ParseError::Length) => {}
+        _ => assert!(false),
+    }
+    let slice = [0; HASH_LEN];
+    match Hash::try_from(&slice[..]) {
+        Ok(_) => {}
+        _ => assert!(false),
+    }
+}
+
+impl TryFrom<&[u8]> for Hash {
+    type Error = ParseError;
+    fn try_from(key: &[u8]) -> Result<Self, Self::Error> {
+        if key.len() != HASH_LEN {
+            Err(ParseError::Length)
+        } else {
+            let mut data = [0; HASH_LEN];
+            data[0..HASH_LEN].copy_from_slice(&key[0..HASH_LEN]);
+            Ok(Hash(data))
         }
     }
 }

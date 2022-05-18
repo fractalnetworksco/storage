@@ -1,5 +1,5 @@
 macro_rules! impl_serde {
-    ($type:ty, $mesg:literal) => {
+    ($type:ty, $len:expr, $mesg:literal) => {
         impl Serialize for $type {
             fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
             where
@@ -9,7 +9,7 @@ macro_rules! impl_serde {
                     let encoded: String = self.to_string();
                     (&encoded).serialize(serializer)
                 } else {
-                    self.0.serialize(serializer)
+                    BigArray::serialize(&self.0, serializer)
                 }
             }
         }
@@ -39,7 +39,7 @@ macro_rules! impl_serde {
 
                     deserializer.deserialize_str(KeyVisitor)
                 } else {
-                    let data: [u8; 32] = <[u8; 32]>::deserialize(deserializer)?;
+                    let data: [u8; $len] = <[u8; $len] as BigArray>::deserialize(deserializer)?;
                     Ok(<$type>::new(data))
                 }
             }
@@ -117,20 +117,39 @@ macro_rules! impl_base64 {
 }
 
 macro_rules! impl_parse {
-    ($type:ty) => {
+    ($type:ty, $len:expr) => {
         impl $type {
             /// Try parsing from string.
             pub fn parse(data: &str) -> Result<Self, ParseError> {
-                let ret = match data.len() {
-                    #[cfg(feature = "hex")]
-                    64 => Self::from_hex(data)?,
-                    #[cfg(feature = "base64")]
-                    44 => Self::from_base64(data).or_else(|_| Self::from_base64_urlsafe(data))?,
-                    #[cfg(feature = "base32")]
-                    56 => Self::from_base32(data)?,
-                    _ => Err(ParseError::Length)?,
-                };
-                Ok(ret)
+                if data.len() > ($len * 2) {
+                    return Err(ParseError::Length);
+                }
+
+                #[allow(unused_assignments)]
+                let mut error = ParseError::Length;
+
+                #[cfg(feature = "hex")]
+                match Self::from_hex(data) {
+                    Ok(data) => return Ok(data),
+                    #[allow(unused_assignments)]
+                    Err(e) => error = e,
+                }
+
+                #[cfg(feature = "base64")]
+                match Self::from_base64(data).or_else(|_| Self::from_base64_urlsafe(data)) {
+                    Ok(data) => return Ok(data),
+                    #[allow(unused_assignments)]
+                    Err(e) => error = e,
+                }
+
+                #[cfg(feature = "base32")]
+                match Self::from_base32(data) {
+                    Ok(data) => return Ok(data),
+                    #[allow(unused_assignments)]
+                    Err(e) => error = e,
+                }
+
+                Err(error)
             }
         }
 
@@ -151,7 +170,7 @@ macro_rules! impl_parse {
         paste! {
             #[test]
             fn [<test_ $type:lower _parse>]() {
-                let value = <$type>::generate();
+                let value = <$type>::test_generate();
                 #[cfg(feature = "hex")]
                 {
                     let value_hex = value.to_hex();
@@ -245,7 +264,7 @@ macro_rules! impl_display {
             #[cfg(any(feature = "base64", feature = "hex", feature = "base32"))]
             #[test]
             fn [<test_ $type:lower _display>]() {
-                let value = <$type>::generate();
+                let value = <$type>::test_generate();
                 let display = value.to_string();
                 let parsed = <$type>::parse(&display).unwrap();
                 assert_eq!(value, parsed);
