@@ -1,4 +1,4 @@
-use crate::volume::Volume;
+use crate::volume::{Volume, VolumeData};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use byteorder::{BigEndian, ReadBytesExt};
@@ -126,7 +126,7 @@ impl Snapshot {
 
     pub async fn from_manifest(
         conn: &mut AnyConnection,
-        volume: &Volume,
+        volume: &VolumeData,
         manifest: &[u8],
     ) -> Result<Snapshot, SnapshotError> {
         let (manifest, signature) =
@@ -137,7 +137,8 @@ impl Snapshot {
         let hash = Manifest::hash(manifest);
 
         // FIXME: parent
-        let snapshot = Snapshot::create(conn, volume, manifest, signature, &hash, None).await?;
+        let snapshot =
+            Snapshot::create(conn, &volume.volume(), manifest, signature, &hash, None).await?;
 
         Ok(snapshot)
     }
@@ -152,15 +153,17 @@ impl Snapshot {
 
     pub async fn fetch_by_hash(
         conn: &mut AnyConnection,
+        volume: &Volume,
         hash: &[u8],
-    ) -> Result<Option<Snapshot>, SnapshotError> {
-        let row = query("SELECT snapshot_id FROM storage_snapshow WHERE snapshot_hash = ?")
+    ) -> Result<Option<SnapshotData>, SnapshotError> {
+        let row = query("SELECT * FROM storage_snapshot WHERE snapshot_hash = ? AND volume_id = ?")
             .bind(hash)
+            .bind(volume.id())
             .fetch_optional(conn)
             .await?;
         match row {
             None => Ok(None),
-            Some(row) => Ok(Some(Snapshot(row.try_get("snapshot_id")?))),
+            Some(row) => Ok(Some(SnapshotData::from_row(&row)?)),
         }
     }
 
@@ -235,13 +238,28 @@ async fn test_snapshot_create() {
     let manifest = vec![66; 60];
     let signature = vec![14; 24];
     let hash = vec![12; 16];
-    let snapshot = Snapshot::create(&mut conn, &volume, &manifest, &signature, &hash, None)
-        .await
-        .unwrap();
+    let snapshot = Snapshot::create(
+        &mut conn,
+        &volume.volume(),
+        &manifest,
+        &signature,
+        &hash,
+        None,
+    )
+    .await
+    .unwrap();
 
     let snapshot_data = snapshot.fetch(&mut conn).await.unwrap();
     assert_eq!(snapshot_data.snapshot(), snapshot);
+    assert_eq!(snapshot_data.manifest(), manifest);
+    assert_eq!(snapshot_data.signature(), signature);
+    assert_eq!(snapshot_data.hash(), hash);
 
+    let snapshot_data = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &hash)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(snapshot_data.snapshot(), snapshot);
     assert_eq!(snapshot_data.manifest(), manifest);
     assert_eq!(snapshot_data.signature(), signature);
     assert_eq!(snapshot_data.hash(), hash);

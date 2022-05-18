@@ -1,5 +1,5 @@
 use crate::snapshot::{Snapshot, SnapshotData};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use fractal_auth_client::UserContext;
 use rocket::serde::uuid::Uuid;
 use sqlx::any::AnyRow;
@@ -9,46 +9,22 @@ use std::str::FromStr;
 use storage_api::{Privkey, Pubkey, SnapshotInfo};
 
 #[derive(Clone, Debug)]
-pub struct Volume {
+pub struct Volume(i64);
+
+#[derive(Clone, Debug)]
+pub struct VolumeData {
     id: i64,
     pubkey: Pubkey,
     account: Uuid,
 }
 
-impl Volume {
-    pub async fn create(conn: &mut AnyConnection, pubkey: &Pubkey, account: &Uuid) -> Result<()> {
-        let result = query(
-            "INSERT INTO storage_volume(volume_pubkey, account_id)
-            VALUES (?, ?)",
-        )
-        .bind(pubkey.as_slice())
-        .bind(account.to_string())
-        .execute(conn)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn lookup(conn: &mut AnyConnection, pubkey: &Pubkey) -> Result<Option<Self>> {
-        let result = query(
-            "SELECT * FROM storage_volume
-                WHERE volume_pubkey = ?",
-        )
-        .bind(pubkey.as_slice())
-        .fetch_optional(conn)
-        .await?;
-        if let Some(result) = result {
-            Ok(Some(Volume::from_row(&result)?))
-        } else {
-            Ok(None)
-        }
-    }
-
+impl VolumeData {
     pub fn from_row(row: &AnyRow) -> Result<Self> {
         let id: i64 = row.try_get("volume_id")?;
         let key: &[u8] = row.try_get("volume_pubkey")?;
         let account: &str = row.try_get("account_id")?;
         let account = Uuid::from_str(account)?;
-        Ok(Volume {
+        Ok(VolumeData {
             id,
             pubkey: Pubkey::try_from(key)?,
             account,
@@ -61,6 +37,10 @@ impl Volume {
 
     pub fn id(&self) -> i64 {
         self.id
+    }
+
+    pub fn volume(&self) -> Volume {
+        Volume(self.id)
     }
 
     pub fn account(&self) -> &Uuid {
@@ -109,6 +89,46 @@ impl Volume {
             Some(row) => Ok(Some(SnapshotData::from_row(&row)?)),
             None => Ok(None),
         }
+    }
+}
+
+impl Volume {
+    pub async fn create(conn: &mut AnyConnection, pubkey: &Pubkey, account: &Uuid) -> Result<Self> {
+        let result = query(
+            "INSERT INTO storage_volume(volume_pubkey, account_id)
+            VALUES (?, ?)",
+        )
+        .bind(pubkey.as_slice())
+        .bind(account.to_string())
+        .execute(conn)
+        .await?;
+        Ok(Volume(
+            result.last_insert_id().ok_or(anyhow!("Missing rowid"))?,
+        ))
+    }
+
+    pub async fn lookup(conn: &mut AnyConnection, pubkey: &Pubkey) -> Result<Option<VolumeData>> {
+        let result = query(
+            "SELECT * FROM storage_volume
+                WHERE volume_pubkey = ?",
+        )
+        .bind(pubkey.as_slice())
+        .fetch_optional(conn)
+        .await?;
+        if let Some(result) = result {
+            Ok(Some(VolumeData::from_row(&result)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn from_row(row: &AnyRow) -> Result<Self> {
+        let id: i64 = row.try_get("volume_id")?;
+        Ok(Volume(id))
+    }
+
+    pub fn id(&self) -> i64 {
+        self.0
     }
 }
 

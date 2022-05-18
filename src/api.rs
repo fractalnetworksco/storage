@@ -108,37 +108,23 @@ async fn volume_snapshot_list(
     unimplemented!()
 }
 
-#[get("/volume/<volume>/snapshot/<snapshot>?<format>")]
+#[get("/volume/<volume>/snapshot/<snapshot>")]
 async fn volume_snapshot_get(
     pool: &State<AnyPool>,
     options: &State<Options>,
     volume: Pubkey,
     snapshot: String,
-    format: Option<String>,
 ) -> Result<Vec<u8>, StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
-    let json = match format.as_deref() {
-        None => false,
-        Some("json") => true,
-        Some("raw") => false,
-        Some(_) => return Err(StorageError::FormatInvalid),
-    };
+    let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
     let hash = base64::decode(&snapshot).unwrap();
-    let snapshot = Snapshot::fetch_by_hash(&mut conn, &hash)
+    let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &hash)
         .await?
         .ok_or(StorageError::SnapshotNotFound)?;
-    let snapshot = snapshot.fetch(&mut conn).await?;
-    match json {
-        true => {
-            unimplemented!()
-        }
-        false => {
-            let mut manifest = snapshot.manifest().to_vec();
-            // FIXME: append
-            //manifest.append(snapshot.signature());
-            Ok(manifest)
-        }
-    }
+    let mut manifest = snapshot.manifest().to_vec();
+    // FIXME: append
+    //manifest.append(snapshot.signature());
+    Ok(manifest)
 }
 
 pub fn routes() -> Vec<Route> {
