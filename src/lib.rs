@@ -3,7 +3,7 @@
 
 pub use crate::chacha20::{DecryptionStream, EncryptionStream};
 pub use crate::ipfs::*;
-pub use crate::keys::{Privkey, Pubkey, Secret};
+pub use crate::keys::{Hash, Privkey, Pubkey, Secret};
 pub use crate::manifest::*;
 pub use crate::types::*;
 use anyhow::Result;
