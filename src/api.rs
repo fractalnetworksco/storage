@@ -15,7 +15,7 @@ use rocket::{
 };
 use sqlx::{query, AnyPool};
 use std::io::Cursor;
-use storage_api::{Manifest, Pubkey, SnapshotInfo};
+use storage_api::{Hash, Manifest, Pubkey, SnapshotInfo};
 use thiserror::Error;
 use tokio::fs::File;
 
@@ -113,12 +113,11 @@ async fn volume_snapshot_get(
     pool: &State<AnyPool>,
     options: &State<Options>,
     volume: Pubkey,
-    snapshot: String,
+    snapshot: Hash,
 ) -> Result<Vec<u8>, StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
     let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
-    let hash = base64::decode(&snapshot).unwrap();
-    let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &hash)
+    let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), snapshot.as_slice())
         .await?
         .ok_or(StorageError::SnapshotNotFound)?;
     let mut manifest = snapshot.manifest().to_vec();

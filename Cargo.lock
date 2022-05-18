@@ -148,7 +148,7 @@ checksum = "e69e13a99a7e6e070bb114f7ff381e58c7ccc188630121fc4c2fe4bcf24cd072"
 dependencies = [
  "http",
  "log",
- "rustls 0.20.5",
+ "rustls 0.20.6",
  "serde",
  "serde_json",
  "url",
@@ -789,7 +789,7 @@ dependencies = [
 [[package]]
 name = "fractal-auth-client"
 version = "0.1.0"
-source = "git+https://gitlab.com/fractalnetworks/fractal-auth-client?branch=v0.1#4b1d97a93cfb19d53821b1c524de5f9f32d439c4"
+source = "git+https://gitlab.com/fractalnetworks/fractal-auth-client?branch=v0.1#068fb1feb592d349376ef897e16cfb3c63e6a299"
 dependencies = [
  "jwks-client",
  "log",
@@ -1143,7 +1143,7 @@ checksum = "d87c48c02e0dc5e3b849a2041db3029fd066650f8f717c07bf8ed78ccb895cac"
 dependencies = [
  "http",
  "hyper",
- "rustls 0.20.5",
+ "rustls 0.20.6",
  "tokio",
  "tokio-rustls 0.23.4",
 ]
@@ -1497,7 +1497,7 @@ dependencies = [
  "digest 0.10.3",
  "multihash-derive 0.8.0",
  "serde",
- "serde-big-array",
+ "serde-big-array 0.3.3",
  "sha2 0.10.2",
  "sha3",
  "unsigned-varint 0.7.1",
@@ -2025,7 +2025,7 @@ dependencies = [
  "native-tls",
  "percent-encoding",
  "pin-project-lite",
- "rustls 0.20.5",
+ "rustls 0.20.6",
  "rustls-pemfile",
  "serde",
  "serde_json",
@@ -2197,9 +2197,9 @@ dependencies = [
 
 [[package]]
 name = "rustls"
-version = "0.20.5"
+version = "0.20.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a024a432ae760ab3bff924ad91ce1cfa52cb57ed16e1ef32d0d249cfee1a6c13"
+checksum = "5aab8ee6c7097ed6057f43c187a62418d0c05a4bd5f18b3571db50ee0f9ce033"
 dependencies = [
  "log",
  "ring",
@@ -2239,12 +2239,12 @@ dependencies = [
 
 [[package]]
 name = "schannel"
-version = "0.1.19"
+version = "0.1.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f05ba609c234e60bee0d547fe94a4c7e9da733d1c962cf6e59efa4cd9c8bc75"
+checksum = "88d6731146462ea25d9244b2ed5fd1d716d25c52e4d54aa4fb0f3c4e9854dbe2"
 dependencies = [
  "lazy_static",
- "winapi",
+ "windows-sys",
 ]
 
 [[package]]
@@ -2316,6 +2316,15 @@ name = "serde-big-array"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cd31f59f6fe2b0c055371bb2f16d7f0aa7d8881676c04a55b1596d1a17cd10a4"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde-big-array"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3323f09a748af288c3dc2474ea6803ee81f118321775bffa3ac8f7e65c5e90e7"
 dependencies = [
  "serde",
 ]
@@ -2637,7 +2646,7 @@ dependencies = [
 [[package]]
 name = "storage-api"
 version = "0.1.0"
-source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#503de30c103cc614364573054a25ab56f8f99900"
+source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#7032c44c502e89b7b68ddf8ae0fbae67a3d3f6d7"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2659,6 +2668,7 @@ dependencies = [
  "reqwest",
  "rocket",
  "serde",
+ "serde-big-array 0.4.1",
  "sha2 0.10.2",
  "thiserror",
  "tokio",
@@ -2899,7 +2909,7 @@ version = "0.23.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c43ee83903113e03984cb9e5cebe6c04a5116269e900e3ddba8f068a62adda59"
 dependencies = [
- "rustls 0.20.5",
+ "rustls 0.20.6",
  "tokio",
  "webpki 0.22.0",
 ]
