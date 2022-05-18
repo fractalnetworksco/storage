@@ -7,7 +7,6 @@ pub use crate::keys::{Privkey, Pubkey, Secret};
 pub use crate::manifest::*;
 pub use crate::types::*;
 use anyhow::Result;
-use async_trait::async_trait;
 use bytes::Bytes;
 use ed25519::*;
 use futures::Stream;

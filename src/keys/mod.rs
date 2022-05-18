@@ -14,7 +14,7 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
 };
 use serde_big_array::BigArray;
-use sha2::{Digest, Sha512};
+use sha2::Sha512;
 use std::fmt;
 use std::str::FromStr;
 use thiserror::Error;

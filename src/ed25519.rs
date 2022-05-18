@@ -1,5 +1,4 @@
 use crate::keys::{Privkey, Pubkey, Secret};
-use blake2::Digest as Blake2Digest;
 use bytes::{Buf, Bytes, BytesMut};
 use ed25519_dalek_fiat::{
     Digest, ExpandedSecretKey, PublicKey, SecretKey, Sha512, Signature, SIGNATURE_LENGTH,
