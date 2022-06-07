@@ -1,4 +1,5 @@
 use crate::keys::{Privkey, Pubkey, Secret};
+use crate::Hash;
 use anyhow::Result;
 use ed25519_dalek_fiat::{ExpandedSecretKey, PublicKey, SecretKey, Signature, Verifier};
 use serde::{Deserialize, Serialize};
@@ -50,11 +51,11 @@ impl Manifest {
         signature
     }
 
-    pub fn hash(manifest: &[u8]) -> Vec<u8> {
+    pub fn hash(manifest: &[u8]) -> Hash {
         let mut hasher = Sha512::new();
         hasher.update(&manifest);
         let hash = hasher.finalize();
-        hash.to_vec()
+        Hash::try_from(hash.as_slice()).unwrap()
     }
 
     pub fn signed(&self, privkey: &Privkey) -> Vec<u8> {
@@ -81,6 +82,22 @@ impl Manifest {
             &data[data.len() - MANIFEST_SIGNATURE_LENGTH..data.len()],
         ))
     }
+}
+
+#[test]
+fn manifest_hash() {
+    let manifest = Manifest {
+        creation: 124123,
+        machine: Uuid::default(),
+        size: 123412,
+        size_total: 12341241,
+        parent: None,
+        data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
+            .try_into()
+            .unwrap(),
+    };
+    let manifest = manifest.encode();
+    assert_eq!(Manifest::hash(&manifest).to_hex(), "8a0074e5f4c55b033b661c0851e0db6b19dc4ba97632586b2de72107168e0078c05f585b2418cc2e1d234388001a4f50926b98e22a19731260031a3a16ab0a40");
 }
 
 #[test]
