@@ -11,6 +11,19 @@ use std::pin::Pin;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "state", rename_all = "kebab-case")]
+pub enum SnapshotState {
+    Pending,
+    Replicating {
+        progress: Option<f64>,
+    },
+    Replicated,
+    Error {
+        message: String
+    },
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct SnapshotInfo {
     pub generation: u64,
