@@ -56,7 +56,7 @@ pub async fn list(
     genmax: Option<u64>,
 ) -> Result<Vec<SnapshotInfo>, Error> {
     let url = api
-        .join(&format!("/snapshot/{}/list", &volume.to_hex()))
+        .join(&format!("/volume/{}/list", &volume.to_hex()))
         .unwrap();
     let mut query = vec![];
     if let Some(parent) = parent {
@@ -73,9 +73,9 @@ pub async fn list(
 }
 
 /// Create new snapshot repository, given a private key.
-pub async fn create(api: &Url, client: &Client, volume: &Privkey) -> Result<bool, Error> {
+pub async fn volume_create(api: &Url, client: &Client, volume: &Privkey) -> Result<bool, Error> {
     let url = api
-        .join(&format!("/snapshot/{}/create", &volume.pubkey().to_hex()))
+        .join(&format!("/volume/{}", &volume.pubkey().to_hex()))
         .unwrap();
     let response = client.post(url).send().await?;
     Ok(response.status().is_success())
@@ -90,7 +90,7 @@ pub async fn upload(
     data: Pin<Box<dyn AsyncRead + Send + Sync>>,
 ) -> Result<Option<SnapshotInfo>, Error> {
     let url = api
-        .join(&format!("/snapshot/{}/upload", &volume.pubkey().to_hex()))
+        .join(&format!("/volume/{}/upload", &volume.pubkey().to_hex()))
         .unwrap();
     let header = header.to_bytes();
     let header_stream = tokio_stream::once(Ok(Bytes::from(header)));
@@ -127,7 +127,7 @@ pub async fn fetch(
     Error,
 > {
     let url = api
-        .join(&format!("/snapshot/{}/fetch", &volume.pubkey().to_hex()))
+        .join(&format!("/volume/{}/fetch", &volume.pubkey().to_hex()))
         .unwrap();
     let mut query = vec![("generation", generation.to_string())];
     if let Some(parent) = parent {
