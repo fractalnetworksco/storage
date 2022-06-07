@@ -15,13 +15,9 @@ pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
 #[serde(tag = "state", rename_all = "kebab-case")]
 pub enum SnapshotState {
     Pending,
-    Replicating {
-        progress: Option<f64>,
-    },
+    Replicating { progress: Option<f64> },
     Replicated,
-    Error {
-        message: String
-    },
+    Error { message: String },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
