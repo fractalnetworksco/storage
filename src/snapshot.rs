@@ -154,10 +154,10 @@ impl Snapshot {
     pub async fn fetch_by_hash(
         conn: &mut AnyConnection,
         volume: &Volume,
-        hash: &[u8],
+        hash: &Hash,
     ) -> Result<Option<SnapshotData>, SnapshotError> {
         let row = query("SELECT * FROM storage_snapshot WHERE snapshot_hash = ? AND volume_id = ?")
-            .bind(hash)
+            .bind(hash.as_slice())
             .bind(volume.id())
             .fetch_optional(conn)
             .await?;
@@ -237,7 +237,7 @@ async fn test_snapshot_create() {
 
     let manifest = vec![66; 60];
     let signature = vec![14; 24];
-    let hash = vec![12; 16];
+    let hash = Manifest::hash(&manifest);
     let snapshot = Snapshot::create(
         &mut conn,
         &volume.volume(),

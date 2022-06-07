@@ -57,6 +57,10 @@ struct Options {
     #[structopt(long, env = "STORAGE_IPFS", global = true)]
     ipfs: Option<Url>,
 
+    #[cfg(feature = "insecure-auth")]
+    #[structopt(long, global = true)]
+    insecure_auth: bool,
+
     #[structopt(subcommand)]
     storage: Storage,
 }
@@ -74,6 +78,12 @@ impl Options {
             info!("Fetching JWKS from {}", &jwks);
             let key_store = key_store(&jwks.to_string()).await?;
             auth_config = auth_config.with_keystore(key_store);
+        }
+
+        #[cfg(feature = "insecure-auth")]
+        if self.insecure_auth {
+            error!("Enabling insecure auth, do not enable this in production");
+            auth_config = auth_config.with_insecure_stub(self.insecure_auth);
         }
 
         rocket::build()

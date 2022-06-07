@@ -120,7 +120,7 @@ async fn volume_snapshot_get(
 ) -> Result<Vec<u8>, StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
     let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
-    let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), snapshot.as_slice())
+    let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &snapshot)
         .await?
         .ok_or(StorageError::SnapshotNotFound)?;
     let mut manifest = snapshot.manifest().to_vec();
