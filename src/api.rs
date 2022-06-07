@@ -3,6 +3,7 @@ use crate::volume::Volume;
 use crate::Options;
 use fractal_auth_client::UserContext;
 use rocket::http::Accept;
+use rocket::response::Redirect;
 use rocket::{
     data::{ByteUnit, ToByteUnit},
     fs::TempFile,
@@ -18,6 +19,7 @@ use std::io::Cursor;
 use storage_api::{Hash, Manifest, Pubkey, SnapshotInfo};
 use thiserror::Error;
 use tokio::fs::File;
+use uuid::Uuid;
 
 #[derive(Error, Debug)]
 pub enum StorageError {
@@ -63,7 +65,8 @@ async fn volume_create(
     volume: Pubkey,
 ) -> Result<(), StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
-    Volume::create(&mut conn, &volume, &context.account())
+    let account = Uuid::parse_str(&context.account().to_string()).unwrap();
+    Volume::create(&mut conn, &volume, &account)
         .await
         .map_err(|_| StorageError::Internal)?;
     Ok(())
@@ -75,15 +78,15 @@ async fn volume_snapshot_upload(
     pool: &State<AnyPool>,
     options: &State<Options>,
     volume: Pubkey,
-) -> Result<Json<SnapshotInfo>, StorageError> {
+) -> Result<Redirect, StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
-    let (manifest, signature) = Manifest::split(&data).ok_or(StorageError::ManifestInvalid)?;
-    Manifest::validate(manifest, signature, &volume).unwrap();
-    let manifest = Manifest::decode(manifest).map_err(|_| StorageError::ManifestInvalid)?;
-    let volume_data = Volume::lookup(&mut conn, &volume)
+    let volume = Volume::lookup(&mut conn, &volume)
         .await
-        .map_err(|_| StorageError::Internal)?;
-    unimplemented!()
+        .map_err(|_| StorageError::Internal)?
+        .ok_or(StorageError::VolumeNotFound)?;
+    let snapshot = Snapshot::create_from_manifest(&mut conn, &volume, &data).await?;
+    let snapshot = snapshot.fetch(&mut conn).await?;
+    Ok(Redirect::to(snapshot.hash().to_hex()))
 }
 
 #[get("/volume/<volume>/snapshots?<parent>&<genmin>&<genmax>")]

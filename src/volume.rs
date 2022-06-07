@@ -1,12 +1,12 @@
 use crate::snapshot::{Snapshot, SnapshotData};
 use anyhow::{anyhow, Result};
 use fractal_auth_client::UserContext;
-use rocket::serde::uuid::Uuid;
 use sqlx::any::AnyRow;
 use sqlx::{query, AnyConnection, AnyPool, Row, SqlitePool};
 use std::path::Path;
 use std::str::FromStr;
 use storage_api::{Privkey, Pubkey, SnapshotInfo};
+use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub struct Volume(i64);

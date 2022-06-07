@@ -9,7 +9,7 @@ use sqlx::{query, AnyConnection, AnyPool, Row, SqlitePool};
 use std::ffi::OsString;
 use std::io::Cursor;
 use std::path::{Path, PathBuf};
-use storage_api::{Manifest, Privkey, Pubkey, SnapshotInfo};
+use storage_api::{Hash, Manifest, Privkey, Pubkey, SnapshotInfo};
 pub use storage_api::{SnapshotHeader, SNAPSHOT_HEADER_SIZE};
 use thiserror::Error;
 
@@ -85,8 +85,8 @@ impl SnapshotData {
         &self.signature
     }
 
-    pub fn hash(&self) -> &[u8] {
-        &self.hash
+    pub fn hash(&self) -> Hash {
+        Hash::try_from(self.hash.as_slice()).unwrap()
     }
 }
 
@@ -100,7 +100,7 @@ impl Snapshot {
         volume: &Volume,
         manifest: &[u8],
         signature: &[u8],
-        hash: &[u8],
+        hash: &Hash,
         parent: Option<&Snapshot>,
     ) -> Result<Snapshot, SnapshotError> {
         let result = query(
@@ -115,7 +115,7 @@ impl Snapshot {
         .bind(volume.id())
         .bind(manifest)
         .bind(signature)
-        .bind(hash)
+        .bind(hash.as_slice())
         .bind(parent.map(|p| p.id()))
         .execute(conn)
         .await?;
@@ -124,7 +124,7 @@ impl Snapshot {
         ))
     }
 
-    pub async fn from_manifest(
+    pub async fn create_from_manifest(
         conn: &mut AnyConnection,
         volume: &VolumeData,
         manifest: &[u8],

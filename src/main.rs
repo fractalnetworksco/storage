@@ -4,6 +4,7 @@ mod snapshot;
 mod tests;
 mod volume;
 
+use anyhow::Result;
 use fractal_auth_client::{key_store, AuthConfig, KeyStore};
 use rocket::fs::TempFile;
 use rocket::*;
@@ -48,54 +49,52 @@ pub struct StorageS3 {
 #[derive(StructOpt)]
 struct Options {
     #[structopt(long, short, env = "STORAGE_DATABASE", global = true)]
-    database: PathBuf,
+    database: Url,
 
     #[structopt(long, env = "STORAGE_JWKS", global = true)]
-    jwks: Url,
+    jwks: Option<Url>,
+
+    #[structopt(long, env = "STORAGE_IPFS", global = true)]
+    ipfs: Option<Url>,
 
     #[structopt(subcommand)]
     storage: Storage,
 }
 
+impl Options {
+    pub async fn run(&self) -> Result<()> {
+        // connect to database
+        let pool = AnyPool::connect(&self.database.to_string()).await?;
+        sqlx::migrate!().run(&pool).await?;
+
+        // auth configuration
+        let mut auth_config = AuthConfig::new();
+
+        if let Some(jwks) = &self.jwks {
+            info!("Fetching JWKS from {}", &jwks);
+            let key_store = key_store(&jwks.to_string()).await?;
+            auth_config = auth_config.with_keystore(key_store);
+        }
+
+        rocket::build()
+            .mount("/api/v1/", api::routes())
+            .manage(pool)
+            .manage(auth_config)
+            .launch()
+            .await?;
+
+        Ok(())
+    }
+}
+
 #[rocket::main]
 async fn main() {
     env_logger::init();
-
     let options = Options::from_args();
-
-    // create database if not exists
-    if !options.database.exists() {
-        info!("Creating database file");
-        tokio::fs::File::create(&options.database).await.unwrap();
+    match options.run().await {
+        Ok(()) => {}
+        Err(error) => {
+            error!("Fatal error: {error:?}");
+        }
     }
-
-    // connect to database
-    let database_path = options
-        .database
-        .clone()
-        .into_os_string()
-        .into_string()
-        .unwrap();
-    let pool = AnyPool::connect(&database_path).await.unwrap();
-    sqlx::migrate!().run(&pool).await.unwrap();
-
-    // make sure storage folder exists
-    if !options.storage.path().is_dir() {
-        error!("Storage folder does not exists");
-        return;
-    }
-
-    let jwks = options.jwks.to_string();
-    info!("Fetching JWKS from {}", &jwks);
-    let key_store = key_store(&jwks).await.unwrap();
-    let mut auth_config = AuthConfig::new().with_keystore(key_store);
-
-    rocket::build()
-        .mount("/api/v1/", api::routes())
-        .manage(pool)
-        .manage(options)
-        .manage(auth_config)
-        .launch()
-        .await
-        .unwrap();
 }

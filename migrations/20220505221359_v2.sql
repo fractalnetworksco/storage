@@ -21,5 +21,7 @@ CREATE TABLE storage_snapshot(
     -- manifest hash (used as unique identifier)
     snapshot_hash BLOB UNIQUE NOT NULL,
     -- pointer to parent snapshot
-    snapshot_parent INTEGER REFERENCES storage_snapshot(snapshot_id) ON DELETE CASCADE
+    snapshot_parent INTEGER REFERENCES storage_snapshot(snapshot_id) ON DELETE CASCADE,
+    -- this snapshot is replicated
+    snapshot_replicated INTEGER NOT NULL DEFAULT 0
 );
