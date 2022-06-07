@@ -10,7 +10,7 @@ use anyhow::Result;
 use bytes::Bytes;
 use ed25519::*;
 use futures::Stream;
-use reqwest::{Body, Client, Error};
+use reqwest::{Body, Client};
 use std::pin::Pin;
 use tokio::io::AsyncRead;
 use tokio_stream::StreamExt;
@@ -26,6 +26,27 @@ mod manifest;
 mod tests;
 mod types;
 
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("Error making HTTP request: {0:}")]
+    Reqwest(#[from] reqwest::Error),
+    #[error("Error parsing URL: {0:}")]
+    UrlParse(#[from] url::ParseError),
+    #[error("Error making HTTP request: {0:}")]
+    Unsuccessful(reqwest::StatusCode),
+}
+
+/// Health check.
+pub async fn health_check(api: &Url, client: &Client) -> Result<(), Error> {
+    let url = api.join(&format!("/health"))?;
+    let response = client.get(url).send().await?;
+    if response.status().is_success() {
+        Ok(())
+    } else {
+        Err(Error::Unsuccessful(response.status()))
+    }
+}
+
 /// Fetch latest (as in, most current generation) based on the parent
 /// generation that is passed.
 pub async fn latest(
@@ -35,7 +56,7 @@ pub async fn latest(
     parent: Option<u64>,
 ) -> Result<Option<SnapshotInfo>, Error> {
     let url = api
-        .join(&format!("/snapshot/{}/latest", &volume.to_hex()))
+        .join(&format!("/api/v1/snapshot/{}/latest", &volume.to_hex()))
         .unwrap();
     let mut query = vec![];
     if let Some(parent) = parent {
@@ -56,7 +77,7 @@ pub async fn list(
     genmax: Option<u64>,
 ) -> Result<Vec<SnapshotInfo>, Error> {
     let url = api
-        .join(&format!("/volume/{}/list", &volume.to_hex()))
+        .join(&format!("/api/v1/volume/{}/list", &volume.to_hex()))
         .unwrap();
     let mut query = vec![];
     if let Some(parent) = parent {
@@ -75,7 +96,7 @@ pub async fn list(
 /// Create new snapshot repository, given a private key.
 pub async fn volume_create(api: &Url, client: &Client, volume: &Privkey) -> Result<bool, Error> {
     let url = api
-        .join(&format!("/volume/{}", &volume.pubkey().to_hex()))
+        .join(&format!("/api/v1/volume/{}", &volume.pubkey().to_hex()))
         .unwrap();
     let response = client.post(url).send().await?;
     Ok(response.status().is_success())
@@ -90,7 +111,10 @@ pub async fn upload(
     data: Pin<Box<dyn AsyncRead + Send + Sync>>,
 ) -> Result<Option<SnapshotInfo>, Error> {
     let url = api
-        .join(&format!("/volume/{}/upload", &volume.pubkey().to_hex()))
+        .join(&format!(
+            "/api/v1/volume/{}/upload",
+            &volume.pubkey().to_hex()
+        ))
         .unwrap();
     let header = header.to_bytes();
     let header_stream = tokio_stream::once(Ok(Bytes::from(header)));
@@ -122,9 +146,9 @@ pub async fn fetch(
 ) -> Result<
     (
         SnapshotHeader,
-        Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<Error>>> + Send>>,
+        Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<reqwest::Error>>> + Send>>,
     ),
-    Error,
+    reqwest::Error,
 > {
     let url = api
         .join(&format!("/volume/{}/fetch", &volume.pubkey().to_hex()))
