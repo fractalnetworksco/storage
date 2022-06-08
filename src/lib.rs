@@ -94,12 +94,15 @@ pub async fn list(
 }
 
 /// Create new snapshot repository, given a private key.
-pub async fn volume_create(api: &Url, client: &Client, volume: &Privkey) -> Result<bool, Error> {
+pub async fn volume_create(api: &Url, client: &Client, volume: &Privkey) -> Result<(), Error> {
     let url = api
         .join(&format!("/api/v1/volume/{}", &volume.pubkey().to_hex()))
         .unwrap();
     let response = client.post(url).send().await?;
-    Ok(response.status().is_success())
+    if !response.status().is_success() {
+        return Err(Error::Unsuccessful(response.status()));
+    }
+    Ok(())
 }
 
 /// Upload a new snapshot
