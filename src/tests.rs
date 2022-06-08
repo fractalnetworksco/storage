@@ -130,6 +130,32 @@ async fn can_launch_service() {
 #[tokio::test]
 async fn can_volume_create() {
     with_service(|url| async move {
+        let privkey = Privkey::generate();
+        let client = Client::new();
+        let token = Uuid::new_v4();
+        volume_create(&url, &client, &token.to_string(), &privkey).await?;
+        Ok(())
+    }).await.unwrap();
+}
+
+#[tokio::test]
+async fn can_snapshot_upload() {
+    with_service(|url| async move {
+        let privkey = Privkey::generate();
+        let client = Client::new();
+        let token = Uuid::new_v4();
+        let machine = Uuid::new_v4();
+        volume_create(&url, &client, &token.to_string(), &privkey).await?;
+        let manifest = Manifest {
+            creation: 0,
+            machine,
+            size: 10,
+            size_total: 10,
+            parent: None,
+            data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
+                .try_into()
+                .unwrap(),
+        };
         Ok(())
     }).await.unwrap();
 }
