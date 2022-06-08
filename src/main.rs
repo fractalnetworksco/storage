@@ -12,63 +12,31 @@ use sqlx::AnyPool;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use url::Url;
-
-#[derive(StructOpt, Clone, Debug)]
-pub enum Storage {
-    #[cfg(feature = "backend-local")]
-    Local(StorageLocal),
-    #[cfg(feature = "backend-s3")]
-    S3(StorageS3),
-}
-
-impl Storage {
-    pub fn path(&self) -> &Path {
-        match self {
-            Storage::Local(storage) => &storage.path,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-#[derive(StructOpt, Clone, Debug)]
-pub struct StorageLocal {
-    #[structopt(long, short)]
-    path: PathBuf,
-}
-
-#[derive(StructOpt, Clone, Debug)]
-pub struct StorageS3 {
-    #[structopt(long)]
-    access_key: String,
-    #[structopt(long)]
-    secret_key: String,
-    #[structopt(long)]
-    security_token: String,
-}
+use std::net::SocketAddr;
 
 #[derive(StructOpt)]
 struct Options {
-    #[structopt(long, short, env = "STORAGE_DATABASE", global = true)]
-    database: Url,
+    #[structopt(long, short, env = "STORAGE_DATABASE")]
+    database: String,
 
-    #[structopt(long, env = "STORAGE_JWKS", global = true)]
+    #[structopt(long, env = "STORAGE_JWKS")]
     jwks: Option<Url>,
 
-    #[structopt(long, env = "STORAGE_IPFS", global = true)]
+    #[structopt(long, env = "STORAGE_IPFS")]
     ipfs: Option<Url>,
+
+    #[structopt(long, env = "STORAGE_LISTEN", default_value = "0.0.0.0:8000")]
+    listen: SocketAddr,
 
     #[cfg(feature = "insecure-auth")]
     #[structopt(long, global = true)]
     insecure_auth: bool,
-
-    #[structopt(subcommand)]
-    storage: Storage,
 }
 
 impl Options {
     pub async fn run(&self) -> Result<()> {
         // connect to database
-        let pool = AnyPool::connect(&self.database.to_string()).await?;
+        let pool = AnyPool::connect(&self.database).await?;
         sqlx::migrate!().run(&pool).await?;
 
         // auth configuration
@@ -86,8 +54,12 @@ impl Options {
             auth_config = auth_config.with_insecure_stub(self.insecure_auth);
         }
 
-        rocket::build()
+        let config = Config::figment()
+            .merge(("port", self.listen.port()))
+            .merge(("address", self.listen.ip()));
+        rocket::custom(config)
             .mount("/api/v1/", api::routes())
+            .mount("/", api::health())
             .manage(pool)
             .manage(auth_config)
             .launch()

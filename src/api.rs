@@ -61,7 +61,6 @@ impl<'r> Responder<'r, 'static> for StorageError {
 async fn volume_create(
     context: UserContext,
     pool: &State<AnyPool>,
-    options: &State<Options>,
     volume: Pubkey,
 ) -> Result<(), StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
@@ -76,7 +75,6 @@ async fn volume_create(
 async fn volume_snapshot_upload(
     data: Vec<u8>,
     pool: &State<AnyPool>,
-    options: &State<Options>,
     volume: Pubkey,
 ) -> Result<Redirect, StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
@@ -114,7 +112,6 @@ async fn volume_snapshot_list(
 #[get("/volume/<volume>/snapshot/<snapshot>")]
 async fn volume_snapshot_get(
     pool: &State<AnyPool>,
-    options: &State<Options>,
     volume: Pubkey,
     snapshot: Hash,
 ) -> Result<Vec<u8>, StorageError> {
@@ -129,6 +126,11 @@ async fn volume_snapshot_get(
     Ok(manifest)
 }
 
+#[get("/health")]
+async fn health_check() -> Result<(), String> {
+    Ok(())
+}
+
 pub fn routes() -> Vec<Route> {
     routes![
         volume_create,
@@ -136,4 +138,8 @@ pub fn routes() -> Vec<Route> {
         volume_snapshot_get,
         volume_snapshot_list,
     ]
+}
+
+pub fn health() -> Vec<Route> {
+    routes![health_check]
 }

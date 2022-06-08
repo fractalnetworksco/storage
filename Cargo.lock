@@ -802,6 +802,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "fractal-storage"
+version = "0.1.1"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base64 0.13.0",
+ "byteorder",
+ "env_logger",
+ "fractal-auth-client",
+ "hex",
+ "log",
+ "rand",
+ "reqwest",
+ "rocket",
+ "rust-s3",
+ "serde",
+ "sqlx",
+ "storage-api",
+ "structopt",
+ "thiserror",
+ "tokio",
+ "url",
+ "uuid 1.1.1",
+]
+
+[[package]]
 name = "futures"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2621,33 +2647,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "storage"
-version = "0.1.1"
-dependencies = [
- "anyhow",
- "async-trait",
- "base64 0.13.0",
- "byteorder",
- "env_logger",
- "fractal-auth-client",
- "hex",
- "log",
- "rocket",
- "rust-s3",
- "serde",
- "sqlx",
- "storage-api",
- "structopt",
- "thiserror",
- "tokio",
- "url",
- "uuid 1.1.1",
-]
-
-[[package]]
 name = "storage-api"
 version = "0.1.0"
-source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#556667de7ab6820a4df592932823f8d3590384d8"
+source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#6e21659ecdaf9aef53f522770c3a66530c29ff62"
 dependencies = [
  "anyhow",
  "async-trait",
