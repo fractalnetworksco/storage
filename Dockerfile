@@ -9,7 +9,7 @@ ENV ROCKET_PORT=${STORAGE_PORT}
 ENV RUST_LOG=info,sqlx=warn
 ENV RUST_BACKTRACE=1
 
-COPY /target/release/storage /usr/local/bin/storage
+COPY /target/release/fractal-storage /usr/local/bin/fractal-storage
 COPY scripts/entrypoint.sh /bin/entrypoint.sh
 
-ENTRYPOINT ["/bin/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/fractal-storage"]
