@@ -39,6 +39,7 @@ pub enum StorageError {
 
 impl<'r> Responder<'r, 'static> for StorageError {
     fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
+        ::log::error!("Responding with error: {self:?}");
         use StorageError::*;
         let status = match self {
             VolumeNotFound => Status::NotFound,
@@ -122,6 +123,15 @@ async fn volume_snapshot_list(
         .await
         .map_err(|_| StorageError::Internal)?
         .ok_or(StorageError::VolumeNotFound)?;
+    let parent = match parent {
+        Some(hash) => Some(
+            Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &hash)
+                .await?
+                .ok_or_else(|| StorageError::SnapshotNotFound)?
+                .snapshot(),
+        ),
+        None => None,
+    };
     let snapshots = Snapshot::list(&mut conn, &volume.volume(), parent.as_ref(), root)
         .await
         .map_err(|_| StorageError::Internal)?;

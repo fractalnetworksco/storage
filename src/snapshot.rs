@@ -187,7 +187,7 @@ impl Snapshot {
     pub async fn list(
         conn: &mut AnyConnection,
         volume: &Volume,
-        parent: Option<&Hash>,
+        parent: Option<&Snapshot>,
         root: bool,
     ) -> Result<Vec<SnapshotData>> {
         let rows = query(
@@ -197,7 +197,7 @@ impl Snapshot {
                 AND ($3 = 0 OR snapshot_parent IS NULL)",
         )
         .bind(volume.id() as i64)
-        .bind(parent.map(|parent| parent.as_slice()))
+        .bind(parent.map(|parent| parent.id()))
         .bind(root)
         .fetch_all(conn)
         .await
