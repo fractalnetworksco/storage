@@ -69,7 +69,12 @@ pub async fn snapshot_list(
     if root {
         query.push(("root", "true".to_string()));
     }
-    let response = client.get(url).query(&query).send().await?;
+    let response = client
+        .get(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .query(&query)
+        .send()
+        .await?;
     Ok(response.json::<Vec<Hash>>().await?)
 }
 
