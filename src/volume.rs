@@ -31,6 +31,14 @@ impl VolumeData {
         })
     }
 
+    pub async fn delete(&self, conn: &mut AnyConnection) -> Result<()> {
+        query("DELETE FROM storage_volume WHERE volume_id = ?")
+            .bind(self.id)
+            .execute(conn)
+            .await?;
+        Ok(())
+    }
+
     pub fn pubkey(&self) -> &Pubkey {
         &self.pubkey
     }

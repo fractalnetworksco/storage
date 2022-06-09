@@ -71,6 +71,27 @@ async fn volume_create(
     Ok(())
 }
 
+#[delete("/volume/<volume>")]
+async fn volume_delete(
+    context: UserContext,
+    pool: &State<AnyPool>,
+    volume: Pubkey,
+) -> Result<(), StorageError> {
+    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    let volume = Volume::lookup(&mut conn, &volume)
+        .await
+        .map_err(|_| StorageError::Internal)?
+        .ok_or(StorageError::VolumeNotFound)?;
+    let account = Uuid::parse_str(&context.account().to_string()).unwrap();
+    if volume.account() == &account {
+        volume
+            .delete(&mut conn)
+            .await
+            .map_err(|_| StorageError::Internal)?;
+    }
+    Ok(())
+}
+
 #[post("/volume/<volume>/snapshot", data = "<data>")]
 async fn volume_snapshot_upload(
     data: Vec<u8>,
@@ -134,6 +155,7 @@ async fn health_check() -> Result<(), String> {
 pub fn routes() -> Vec<Route> {
     routes![
         volume_create,
+        volume_delete,
         volume_snapshot_upload,
         volume_snapshot_get,
         volume_snapshot_list,

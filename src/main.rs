@@ -9,10 +9,10 @@ use fractal_auth_client::{key_store, AuthConfig, KeyStore};
 use rocket::fs::TempFile;
 use rocket::*;
 use sqlx::AnyPool;
+use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use url::Url;
-use std::net::SocketAddr;
 
 #[derive(StructOpt)]
 struct Options {

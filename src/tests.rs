@@ -1,16 +1,16 @@
-use anyhow::Result;
 use crate::volume::Volume;
 use crate::Options;
-use sqlx::AnyPool;
-use storage_api::*;
-use uuid::Uuid;
-use std::time::Duration;
-use std::net::{SocketAddr, IpAddr, Ipv4Addr};
-use std::future::Future;
-use url::Url;
-use reqwest::Client;
+use anyhow::Result;
 use rand::{thread_rng, Rng};
+use reqwest::Client;
+use sqlx::AnyPool;
+use std::future::Future;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Range;
+use std::time::Duration;
+use storage_api::*;
+use url::Url;
+use uuid::Uuid;
 
 const WAIT_UP_TIMEOUT: Duration = Duration::from_secs(2);
 const PORT_RANGE: Range<u16> = 50000..60000;
@@ -85,7 +85,7 @@ async fn wait_up(service: &Url) {
         timer.tick().await;
         match health_check(service, &client).await {
             Ok(()) => break,
-            Err(_) => {},
+            Err(_) => {}
         }
     }
 }
@@ -105,7 +105,10 @@ fn options_default(listen: SocketAddr) -> Options {
     }
 }
 
-async fn with_service<F>(test: impl FnOnce(Url) -> F) -> Result<()> where F: Future<Output = Result<()>> {
+async fn with_service<F>(test: impl FnOnce(Url) -> F) -> Result<()>
+where
+    F: Future<Output = Result<()>>,
+{
     let port = thread_rng().gen_range(PORT_RANGE);
     let listen = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
     let options = options_default(listen);
@@ -124,7 +127,9 @@ async fn can_launch_service() {
     with_service(|url| async move {
         health_check(&url, &Client::new()).await?;
         Ok(())
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
 }
 
 #[tokio::test]
@@ -135,7 +140,25 @@ async fn can_volume_create() {
         let token = Uuid::new_v4();
         volume_create(&url, &client, &token.to_string(), &privkey).await?;
         Ok(())
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn can_volume_remove() {
+    with_service(|url| async move {
+        let privkey = Privkey::generate();
+        let client = Client::new();
+        let token = Uuid::new_v4();
+        volume_create(&url, &client, &token.to_string(), &privkey).await?;
+        volume_remove(&url, &client, &token.to_string(), &privkey).await?;
+        let result = volume_remove(&url, &client, &token.to_string(), &privkey).await;
+        assert!(result.is_err());
+        Ok(())
+    })
+    .await
+    .unwrap();
 }
 
 #[tokio::test]
@@ -157,5 +180,7 @@ async fn can_snapshot_upload() {
                 .unwrap(),
         };
         Ok(())
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
 }
