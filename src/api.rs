@@ -130,7 +130,7 @@ async fn volume_snapshot_list(
     unimplemented!()
 }
 
-#[get("/volume/<volume>/snapshot/<snapshot>")]
+#[get("/volume/<volume>/<snapshot>")]
 async fn volume_snapshot_get(
     pool: &State<AnyPool>,
     volume: Pubkey,
@@ -141,9 +141,11 @@ async fn volume_snapshot_get(
     let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &snapshot)
         .await?
         .ok_or(StorageError::SnapshotNotFound)?;
+    error!("Got manifest: {:?}", snapshot.manifest());
+    error!("Got signature: {:?}", snapshot.signature());
     let mut manifest = snapshot.manifest().to_vec();
-    // FIXME: append
-    //manifest.append(snapshot.signature());
+    manifest.extend_from_slice(snapshot.signature());
+    error!("Combined is: {manifest:?}");
     Ok(manifest)
 }
 
