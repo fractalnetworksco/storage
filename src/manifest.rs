@@ -11,7 +11,7 @@ pub const MANIFEST_SIGNATURE_LENGTH: usize = 64;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Parent {
-    hash: Vec<u8>,
+    hash: Hash,
     volume: Option<(Pubkey, Secret)>,
 }
 
