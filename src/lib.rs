@@ -112,6 +112,25 @@ pub async fn volume_create(
     Ok(())
 }
 
+/// Remove volume.
+pub async fn volume_remove(
+    api: &Url,
+    client: &Client,
+    token: &str,
+    volume: &Privkey,
+) -> Result<(), Error> {
+    let url = api.join(&format!("/api/v1/volume/{}", &volume.pubkey().to_hex()))?;
+    let response = client
+        .delete(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        return Err(Error::Unsuccessful(response.status()));
+    }
+    Ok(())
+}
+
 /// Upload a new snapshot
 pub async fn upload(
     api: &Url,
