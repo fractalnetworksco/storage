@@ -240,3 +240,108 @@ async fn can_snapshot_fetch_missing() {
     .await
     .unwrap();
 }
+
+#[tokio::test]
+async fn can_snapshot_list_empty() {
+    with_service(|url| async move {
+        let client = Client::new();
+        let token = Uuid::new_v4();
+        let volume = Privkey::generate();
+
+        // Listing snapshots on an nonexistant volume should return 404
+        let result = snapshot_list(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            None,
+            false,
+        )
+        .await;
+        assert!(matches!(
+            result,
+            Err(Error::Unsuccessful(StatusCode::NOT_FOUND))
+        ));
+
+        // Listing snapshots on an empty volume should return an empty list.
+        volume_create(&url, &client, &token.to_string(), &volume).await?;
+        let result = snapshot_list(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            None,
+            false,
+        )
+        .await?;
+        assert_eq!(result, vec![]);
+
+        Ok(())
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn can_snapshot_list_root() {
+    with_service(|url| async move {
+        let client = Client::new();
+        let token = Uuid::new_v4();
+        let machine = Uuid::new_v4();
+        let volume = Privkey::generate();
+
+        // Listing snapshots on an empty volume should return an empty list.
+        volume_create(&url, &client, &token.to_string(), &volume).await?;
+        let result = snapshot_list(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            None,
+            false,
+        )
+        .await?;
+        assert_eq!(result, vec![]);
+
+        // upload a single snapshot with no parent (root snapshot)
+        let manifest = Manifest {
+            creation: 0,
+            machine,
+            size: 10,
+            size_total: 10,
+            parent: None,
+            data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
+                .try_into()
+                .unwrap(),
+        };
+        let hash = snapshot_upload(&url, &client, &token.to_string(), &volume, &manifest).await?;
+
+        // listing with no options should return this snapshot
+        let result = snapshot_list(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            None,
+            false,
+        )
+        .await?;
+        assert_eq!(result, vec![hash]);
+
+        // listing with root set to true should return this snapshot
+        let result = snapshot_list(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            None,
+            true,
+        )
+        .await?;
+        assert_eq!(result, vec![hash]);
+
+        Ok(())
+    })
+    .await
+    .unwrap();
+}

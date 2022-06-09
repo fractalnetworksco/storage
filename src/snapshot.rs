@@ -170,30 +170,26 @@ impl Snapshot {
     pub async fn list(
         conn: &mut AnyConnection,
         volume: &Volume,
-        parent: Option<u64>,
-    ) -> Result<Vec<Self>> {
-        /*
+        parent: Option<&Hash>,
+        root: bool,
+    ) -> Result<Vec<SnapshotData>> {
         let rows = query(
             "SELECT * FROM storage_snapshot
                 WHERE volume_id = $1
                 AND ($2 IS NULL OR snapshot_parent = $2)
-                AND ($3 IS NULL OR snapshot_generation >= $3)
-                AND ($4 IS NULL OR snapshot_generation <= $4)",
+                AND ($3 = 0 OR snapshot_parent IS NULL)",
         )
         .bind(volume.id() as i64)
-        .bind(parent.map(|parent| parent as i64))
-        .bind(genmin.map(|parent| parent as i64))
-        .bind(genmax.map(|parent| parent as i64))
+        .bind(parent.map(|parent| parent.as_slice()))
+        .bind(root)
         .fetch_all(conn)
         .await
         .unwrap();
         let mut snapshots = vec![];
         for row in &rows {
-            snapshots.push(Self::from_row(row)?);
+            snapshots.push(SnapshotData::from_row(row)?);
         }
         Ok(snapshots)
-        */
-        unimplemented!()
     }
 }
 

@@ -109,19 +109,25 @@ async fn volume_snapshot_upload(
     Ok(Redirect::to(snapshot.hash().to_hex()))
 }
 
-#[get("/volume/<volume>/snapshots?<parent>")]
+#[get("/volume/<volume>/snapshots?<parent>&<root>")]
 async fn volume_snapshot_list(
     context: UserContext,
     pool: &State<AnyPool>,
     volume: Pubkey,
     parent: Option<Hash>,
+    root: bool,
 ) -> Result<Json<Vec<Hash>>, StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
     let volume = Volume::lookup(&mut conn, &volume)
         .await
         .map_err(|_| StorageError::Internal)?
         .ok_or(StorageError::VolumeNotFound)?;
-    unimplemented!()
+    let snapshots = Snapshot::list(&mut conn, &volume.volume(), parent.as_ref(), root)
+        .await
+        .map_err(|_| StorageError::Internal)?;
+    Ok(Json(
+        snapshots.iter().map(|snapshot| snapshot.hash()).collect(),
+    ))
 }
 
 #[get("/volume/<volume>/<snapshot>")]
