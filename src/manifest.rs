@@ -1,6 +1,6 @@
 use crate::keys::{Privkey, Pubkey, Secret};
 use crate::Hash;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use ed25519_dalek_fiat::{ExpandedSecretKey, PublicKey, SecretKey, Signature, Verifier};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
@@ -48,7 +48,11 @@ impl ManifestSigned {
                 signature,
             })
         } else {
-            unimplemented!()
+            Err(anyhow!(
+                "Missing snapshot signature (got length {}, expected {})",
+                from.len(),
+                MANIFEST_SIGNATURE_LENGTH
+            ))
         }
     }
 }
