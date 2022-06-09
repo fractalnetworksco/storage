@@ -5,6 +5,9 @@ cache:
     - .cargo/
     - .cache/sccache
 
+variables:
+  RUST_BINARY: fractal-storage
+
 stages:
   - test
   - build
@@ -59,7 +62,7 @@ build:amd64:
     - cargo build --release
   artifacts:
     paths:
-      - target/release/storage
+      - target/release/$RUST_BINARY
     expire_in: 1 week
   interruptible: true
 
@@ -72,7 +75,7 @@ build:arm32:
     - cargo build --release --target arm-unknown-linux-gnueabihf
   artifacts:
     paths:
-      - target/arm-unknown-linux-gnueabihf/release/storage
+      - target/arm-unknown-linux-gnueabihf/release/$RUST_BINARY
     expire_in: 1 week
   interruptible: true
 
@@ -85,7 +88,7 @@ build:arm64:
     - cargo build --release --target aarch64-unknown-linux-gnu
   artifacts:
     paths:
-      - target/aarch64-unknown-linux-gnu/release/storage
+      - target/aarch64-unknown-linux-gnu/release/$RUST_BINARY
     expire_in: 1 week
   interruptible: true
 
@@ -128,12 +131,12 @@ pages:
   script:
     - mkdir public
     - mv target/doc public/doc
-    - mv target/release/storage public/storage-amd64
-    - sign public/storage-amd64
-    - mv target/arm-unknown-linux-gnueabihf/release/storage public/storage-arm32
-    - sign public/storage-arm32
-    - mv target/aarch64-unknown-linux-gnu/release/storage public/storage-arm64
-    - sign public/storage-arm64
+    - mv target/release/$RUST_BINARY public/$RUST_BINARY-amd64
+    - sign public/$RUST_BINARY-amd64
+    - mv target/arm-unknown-linux-gnueabihf/release/$RUST_BINARY public/$RUST_BINARY-arm32
+    - sign public/$RUST_BINARY-arm32
+    - mv target/aarch64-unknown-linux-gnu/release/$RUST_BINARY public/$RUST_BINARY-arm64
+    - sign public/$RUST_BINARY-arm64
   artifacts:
     paths:
       - public
