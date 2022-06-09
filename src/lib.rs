@@ -147,8 +147,8 @@ pub async fn snapshot_upload(
             &volume.pubkey().to_hex()
         ))
         .unwrap();
+    let hash = Manifest::hash(&manifest.encode());
     let manifest = manifest.signed(volume);
-    let hash = Manifest::hash(&manifest);
     let response = client
         .post(url)
         .header("Authorization", format!("Bearer {token}"))
@@ -181,6 +181,9 @@ pub async fn snapshot_fetch(
         .header("Authorization", format!("Bearer {token}"))
         .send()
         .await?;
+    if !response.status().is_success() {
+        return Err(Error::Unsuccessful(response.status()));
+    }
     let manifest = response.bytes().await?;
     let manifest = ManifestSigned::parse(&manifest)?;
     Ok(manifest)
