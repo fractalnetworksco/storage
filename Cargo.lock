@@ -2649,7 +2649,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "storage-api"
 version = "0.1.0"
-source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#d0f4a631b7dc54e61e44c33d5886e09e0bb8bfe8"
+source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#8e5b4fa68863484e416363b564af6044221953dd"
 dependencies = [
  "anyhow",
  "async-trait",

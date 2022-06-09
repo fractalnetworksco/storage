@@ -3,6 +3,7 @@ use crate::Options;
 use anyhow::Result;
 use rand::{thread_rng, Rng};
 use reqwest::Client;
+use reqwest::StatusCode;
 use sqlx::AnyPool;
 use std::future::Future;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -186,7 +187,6 @@ async fn can_snapshot_upload() {
     .unwrap();
 }
 
-#[ignore]
 #[tokio::test]
 async fn can_snapshot_fetch() {
     with_service(|url| async move {
@@ -209,6 +209,32 @@ async fn can_snapshot_fetch() {
         let signed_manifest =
             snapshot_fetch(&url, &client, &token.to_string(), &volume, &hash).await?;
         assert_eq!(manifest, signed_manifest.manifest);
+        Ok(())
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn can_snapshot_fetch_missing() {
+    with_service(|url| async move {
+        let client = Client::new();
+        let token = Uuid::new_v4();
+        let volume = Privkey::generate();
+        let snapshot = Hash::generate(&[]);
+        let result = snapshot_fetch(&url, &client, &token.to_string(), &volume, &snapshot).await;
+        assert!(matches!(
+            result,
+            Err(Error::Unsuccessful(StatusCode::NOT_FOUND))
+        ));
+
+        volume_create(&url, &client, &token.to_string(), &volume).await?;
+        let result = snapshot_fetch(&url, &client, &token.to_string(), &volume, &snapshot).await;
+        assert!(matches!(
+            result,
+            Err(Error::Unsuccessful(StatusCode::NOT_FOUND))
+        ));
+
         Ok(())
     })
     .await

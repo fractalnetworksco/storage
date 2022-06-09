@@ -137,7 +137,10 @@ async fn volume_snapshot_get(
     snapshot: Hash,
 ) -> Result<Vec<u8>, StorageError> {
     let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
-    let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
+    let volume = Volume::lookup(&mut conn, &volume)
+        .await
+        .map_err(|_| StorageError::Internal)?
+        .ok_or(StorageError::VolumeNotFound)?;
     let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &snapshot)
         .await?
         .ok_or(StorageError::SnapshotNotFound)?;
