@@ -132,35 +132,30 @@ pub async fn volume_remove(
 }
 
 /// Upload a new snapshot
-pub async fn upload(
+pub async fn snapshot_upload(
     api: &Url,
     client: &Client,
+    token: &str,
     volume: &Privkey,
-    header: &SnapshotHeader,
-    data: Pin<Box<dyn AsyncRead + Send + Sync>>,
-) -> Result<Option<SnapshotInfo>, Error> {
+    manifest: &Manifest,
+) -> Result<(), Error> {
     let url = api
         .join(&format!(
-            "/api/v1/volume/{}/upload",
+            "/api/v1/volume/{}/snapshot",
             &volume.pubkey().to_hex()
         ))
         .unwrap();
-    let header = header.to_bytes();
-    let header_stream = tokio_stream::once(Ok(Bytes::from(header)));
-    let data_stream = ReaderStream::new(data);
-    let stream = EncryptionStream::new(data_stream, &volume.to_chacha20_key());
-    let stream = header_stream.chain(stream);
-    let signed_stream = SignStream::new(stream, volume);
+    let manifest = manifest.signed(volume);
     let response = client
         .post(url)
-        .body(Body::wrap_stream(signed_stream))
+        .header("Authorization", format!("Bearer {token}"))
+        .body(manifest)
         .send()
         .await?;
-    if response.status().is_success() {
-        Ok(Some(response.json::<SnapshotInfo>().await?))
-    } else {
-        Ok(None)
+    if !response.status().is_success() {
+        return Err(Error::Unsuccessful(response.status()));
     }
+    Ok(())
 }
 
 /// Fetch a snapshot from storage. This will decrypt and verify the
