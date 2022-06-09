@@ -32,6 +32,27 @@ pub struct Manifest {
     pub data: Url,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct ManifestSigned {
+    pub manifest: Manifest,
+    pub signature: Vec<u8>,
+}
+
+impl ManifestSigned {
+    pub fn parse(from: &[u8]) -> Result<Self> {
+        if let Some((manifest, signature)) = Manifest::split(from) {
+            let manifest = Manifest::decode(manifest)?;
+            let signature = signature.to_vec();
+            Ok(ManifestSigned {
+                manifest,
+                signature,
+            })
+        } else {
+            unimplemented!()
+        }
+    }
+}
+
 impl Manifest {
     pub fn encode(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()

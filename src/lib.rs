@@ -34,6 +34,8 @@ pub enum Error {
     UrlParse(#[from] url::ParseError),
     #[error("Error making HTTP request: {0:}")]
     Unsuccessful(reqwest::StatusCode),
+    #[error("Other error occured: {0:?}")]
+    Other(#[from] anyhow::Error),
 }
 
 /// Health check.
@@ -138,7 +140,7 @@ pub async fn snapshot_upload(
     token: &str,
     volume: &Privkey,
     manifest: &Manifest,
-) -> Result<(), Error> {
+) -> Result<Hash, Error> {
     let url = api
         .join(&format!(
             "/api/v1/volume/{}/snapshot",
@@ -146,6 +148,7 @@ pub async fn snapshot_upload(
         ))
         .unwrap();
     let manifest = manifest.signed(volume);
+    let hash = Manifest::hash(&manifest);
     let response = client
         .post(url)
         .header("Authorization", format!("Bearer {token}"))
@@ -155,7 +158,32 @@ pub async fn snapshot_upload(
     if !response.status().is_success() {
         return Err(Error::Unsuccessful(response.status()));
     }
-    Ok(())
+    Ok(hash)
+}
+
+/// Upload a new snapshot
+pub async fn snapshot_fetch(
+    api: &Url,
+    client: &Client,
+    token: &str,
+    volume: &Privkey,
+    snapshot: &Hash,
+) -> Result<ManifestSigned, Error> {
+    let url = api
+        .join(&format!(
+            "/api/v1/volume/{}/{}",
+            &volume.pubkey().to_hex(),
+            &snapshot.to_hex(),
+        ))
+        .unwrap();
+    let response = client
+        .get(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .send()
+        .await?;
+    let manifest = response.bytes().await?;
+    let manifest = ManifestSigned::parse(&manifest)?;
+    Ok(manifest)
 }
 
 /// Fetch a snapshot from storage. This will decrypt and verify the
