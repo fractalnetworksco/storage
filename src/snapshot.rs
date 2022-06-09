@@ -167,30 +167,6 @@ impl Snapshot {
         }
     }
 
-    pub async fn lookup(conn: &mut AnyConnection, volume: &Pubkey) -> Result<Option<Snapshot>> {
-        /*
-        let row = query(
-            "SELECT * FROM storage_snapshot
-                JOIN storage_volume
-                    ON storage_volume.volume_id = storage_snapshot.volume_id
-                WHERE volume_pubkey = ?
-                    AND snapshot_generation = ?
-                    AND snapshot_parent IS ?",
-        )
-        .bind(volume.as_slice())
-        .bind(generation as i64)
-        .bind(parent.map(|parent| parent as i64))
-        .fetch_optional(conn)
-        .await
-        .unwrap();
-        match row {
-            Some(row) => Ok(Some(Self::from_row(&row)?)),
-            None => Ok(None),
-        }
-        */
-        unimplemented!()
-    }
-
     pub async fn list(
         conn: &mut AnyConnection,
         volume: &Volume,

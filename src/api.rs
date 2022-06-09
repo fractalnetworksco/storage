@@ -94,6 +94,7 @@ async fn volume_delete(
 
 #[post("/volume/<volume>/snapshot", data = "<data>")]
 async fn volume_snapshot_upload(
+    context: UserContext,
     data: Vec<u8>,
     pool: &State<AnyPool>,
     volume: Pubkey,
@@ -108,25 +109,18 @@ async fn volume_snapshot_upload(
     Ok(Redirect::to(snapshot.hash().to_hex()))
 }
 
-#[get("/volume/<volume>/snapshots?<parent>&<genmin>&<genmax>")]
+#[get("/volume/<volume>/snapshots?<parent>")]
 async fn volume_snapshot_list(
+    context: UserContext,
     pool: &State<AnyPool>,
-    parent: Option<u64>,
-    genmin: Option<u64>,
-    genmax: Option<u64>,
     volume: Pubkey,
-) -> Json<Vec<SnapshotInfo>> {
-    /*
-    let mut conn = pool.acquire().await.unwrap();
-    let volume = Volume::lookup(&mut conn, &volume).await.unwrap().unwrap();
-    let info = Snapshot::list(&mut conn, &volume, parent, genmin, genmax)
+    parent: Option<Hash>,
+) -> Result<Json<Vec<Hash>>, StorageError> {
+    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    let volume = Volume::lookup(&mut conn, &volume)
         .await
-        .unwrap()
-        .into_iter()
-        .map(|row| row.to_info())
-        .collect();
-    Json(info)
-    */
+        .map_err(|_| StorageError::Internal)?
+        .ok_or(StorageError::VolumeNotFound)?;
     unimplemented!()
 }
 
@@ -144,11 +138,8 @@ async fn volume_snapshot_get(
     let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &snapshot)
         .await?
         .ok_or(StorageError::SnapshotNotFound)?;
-    error!("Got manifest: {:?}", snapshot.manifest());
-    error!("Got signature: {:?}", snapshot.signature());
     let mut manifest = snapshot.manifest().to_vec();
     manifest.extend_from_slice(snapshot.signature());
-    error!("Combined is: {manifest:?}");
     Ok(manifest)
 }
 
