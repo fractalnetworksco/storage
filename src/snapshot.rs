@@ -21,6 +21,8 @@ pub enum SnapshotError {
     Database(#[from] sqlx::Error),
     #[error("Missing rowid")]
     MissingRowid,
+    #[error("Missing parent with hash {0:}")]
+    MissingParent(Hash),
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -133,12 +135,27 @@ impl Snapshot {
             Manifest::split(&manifest).ok_or(SnapshotError::ManifestInvalid)?;
         Manifest::validate(manifest, signature, volume.pubkey()).unwrap();
         let parsed = Manifest::decode(manifest).map_err(|_| SnapshotError::ManifestInvalid)?;
-
         let hash = Manifest::hash(manifest);
+        let parent = match &parsed.parent {
+            Some(parent) if parent.volume.is_none() => {
+                let snapshot = Snapshot::fetch_by_hash(conn, &volume.volume(), &parent.hash)
+                    .await?
+                    .ok_or_else(|| SnapshotError::MissingParent(parent.hash))?;
+                Some(snapshot.snapshot())
+            }
+            Some(parent) => None,
+            None => None,
+        };
 
-        // FIXME: parent
-        let snapshot =
-            Snapshot::create(conn, &volume.volume(), manifest, signature, &hash, None).await?;
+        let snapshot = Snapshot::create(
+            conn,
+            &volume.volume(),
+            manifest,
+            signature,
+            &hash,
+            parent.as_ref(),
+        )
+        .await?;
 
         Ok(snapshot)
     }
