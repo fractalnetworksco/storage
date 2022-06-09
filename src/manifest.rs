@@ -11,8 +11,11 @@ pub const MANIFEST_SIGNATURE_LENGTH: usize = 64;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Parent {
-    hash: Hash,
-    volume: Option<(Pubkey, Secret)>,
+    /// Hash of parent snapshot.
+    pub hash: Hash,
+    /// If the parent snapshot is not in the same volume, this has the pubkey and secret needed to
+    /// look it up.
+    pub volume: Option<(Pubkey, Secret)>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
