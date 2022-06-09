@@ -6,7 +6,10 @@ use ed25519_dalek_fiat::{PublicKey, SecretKey};
 use paste::paste;
 use rand_core::{OsRng, RngCore};
 #[cfg(feature = "rocket")]
-use rocket::request::FromParam;
+use rocket::{
+    form::{DataField, FromFormField, ValueField},
+    request::FromParam,
+};
 #[cfg(feature = "schema")]
 use schemars::JsonSchema;
 use serde::{

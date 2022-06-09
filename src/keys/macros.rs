@@ -215,6 +215,18 @@ macro_rules! impl_rocket {
                 <$type>::parse(param)
             }
         }
+
+        #[rocket::async_trait]
+        impl<'r> FromFormField<'r> for $type {
+            fn from_value(field: ValueField<'r>) -> rocket::form::Result<'r, Self> {
+                Ok(<$type>::parse(field.value).map_err(|e| rocket::form::Error::custom(e))?)
+            }
+
+            async fn from_data(mut field: DataField<'r, '_>) -> rocket::form::Result<'r, Self> {
+                let data = field.data.peek(128).await;
+                Ok(<$type>::try_from(data).map_err(|e| rocket::form::Error::custom(e))?)
+            }
+        }
     };
 }
 
