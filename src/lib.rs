@@ -51,48 +51,26 @@ pub async fn health_check(api: &Url, client: &Client) -> Result<(), Error> {
 
 /// Fetch latest (as in, most current generation) based on the parent
 /// generation that is passed.
-pub async fn latest(
+pub async fn snapshot_list(
     api: &Url,
     client: &Client,
+    token: &str,
     volume: &Pubkey,
-    parent: Option<u64>,
-) -> Result<Option<SnapshotInfo>, Error> {
+    parent: Option<&Hash>,
+    root: bool,
+) -> Result<Vec<Hash>, Error> {
     let url = api
-        .join(&format!("/api/v1/snapshot/{}/latest", &volume.to_hex()))
+        .join(&format!("/api/v1/volume/{}/snapshots", &volume.to_hex()))
         .unwrap();
     let mut query = vec![];
     if let Some(parent) = parent {
         query.push(("parent", parent.to_string()));
     }
-    let response = client.get(url).query(&query).send().await?;
-    Ok(response.json::<Option<SnapshotInfo>>().await?)
-}
-
-/// List snapshots, optionally restrict to ones with a given parent
-/// or a range limit on the generation.
-pub async fn list(
-    api: &Url,
-    client: &Client,
-    volume: &Pubkey,
-    parent: Option<u64>,
-    genmin: Option<u64>,
-    genmax: Option<u64>,
-) -> Result<Vec<SnapshotInfo>, Error> {
-    let url = api
-        .join(&format!("/api/v1/volume/{}/list", &volume.to_hex()))
-        .unwrap();
-    let mut query = vec![];
-    if let Some(parent) = parent {
-        query.push(("parent", parent.to_string()));
-    }
-    if let Some(genmin) = genmin {
-        query.push(("genmin", genmin.to_string()));
-    }
-    if let Some(genmax) = genmax {
-        query.push(("genmax", genmax.to_string()));
+    if root {
+        query.push(("root", "true".to_string()));
     }
     let response = client.get(url).query(&query).send().await?;
-    Ok(response.json::<Vec<SnapshotInfo>>().await?)
+    Ok(response.json::<Vec<Hash>>().await?)
 }
 
 /// Create new snapshot repository, given a private key.
@@ -187,44 +165,4 @@ pub async fn snapshot_fetch(
     let manifest = response.bytes().await?;
     let manifest = ManifestSigned::parse(&manifest)?;
     Ok(manifest)
-}
-
-/// Fetch a snapshot from storage. This will decrypt and verify the
-/// signature on the snapshot, to make sure that it is valid and
-/// intact.
-pub async fn fetch(
-    api: &Url,
-    client: &Client,
-    volume: &Privkey,
-    generation: u64,
-    parent: Option<u64>,
-) -> Result<
-    (
-        SnapshotHeader,
-        Pin<Box<dyn Stream<Item = Result<Bytes, VerifyError<reqwest::Error>>> + Send>>,
-    ),
-    reqwest::Error,
-> {
-    let url = api
-        .join(&format!("/volume/{}/fetch", &volume.pubkey().to_hex()))
-        .unwrap();
-    let mut query = vec![("generation", generation.to_string())];
-    if let Some(parent) = parent {
-        query.push(("parent", parent.to_string()));
-    }
-    let response = client.get(url).query(&query).send().await?;
-    if response.status().is_success() {
-        let stream = VerifyStream::new(&volume.pubkey(), response.bytes_stream());
-        let mut stream = HeaderStream::new(stream);
-        let header = loop {
-            stream.next().await;
-            if let Some(header) = stream.header() {
-                break header;
-            }
-        };
-        let stream = DecryptionStream::new(stream, &volume.to_chacha20_key());
-        Ok((header, Box::pin(stream)))
-    } else {
-        unimplemented!()
-    }
 }
