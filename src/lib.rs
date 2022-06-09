@@ -75,6 +75,9 @@ pub async fn snapshot_list(
         .query(&query)
         .send()
         .await?;
+    if !response.status().is_success() {
+        return Err(Error::Unsuccessful(response.status()));
+    }
     Ok(response.json::<Vec<Hash>>().await?)
 }
 
