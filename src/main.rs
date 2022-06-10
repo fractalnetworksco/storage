@@ -30,7 +30,7 @@ struct Options {
 
     #[cfg(feature = "insecure-auth")]
     #[structopt(long, global = true)]
-    insecure_auth: bool,
+    insecure_auth_stub: bool,
 }
 
 impl Options {
@@ -49,9 +49,9 @@ impl Options {
         }
 
         #[cfg(feature = "insecure-auth")]
-        if self.insecure_auth {
+        if self.insecure_auth_stub {
             error!("Enabling insecure auth, do not enable this in production");
-            auth_config = auth_config.with_insecure_stub(self.insecure_auth);
+            auth_config = auth_config.with_insecure_stub(self.insecure_auth_stub);
         }
 
         let config = Config::figment()

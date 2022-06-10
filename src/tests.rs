@@ -101,7 +101,7 @@ fn options_default(listen: SocketAddr) -> Options {
         database: "sqlite://:memory:".into(),
         ipfs: None,
         jwks: None,
-        insecure_auth: true,
+        insecure_auth_stub: true,
         listen,
     }
 }
