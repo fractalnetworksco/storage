@@ -2,7 +2,7 @@ FROM debian:11
 
 ARG BUILD_TYPE=release
 ENV STORAGE_LISTEN=0.0.0.0:8000
-ENV STORAGE_DATABASE=sqlite:///tmp/gateway.db?create=true
+ENV STORAGE_DATABASE=sqlite:///tmp/gateway.db?mode=rwc
 ENV RUST_LOG=info,sqlx=warn
 ENV RUST_BACKTRACE=1
 
