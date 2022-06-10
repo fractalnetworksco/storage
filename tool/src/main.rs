@@ -25,6 +25,9 @@ pub struct Options {
     /// Url of IPFS server.
     #[structopt(long, global = true, env = "IPFS_API")]
     ipfs: Option<Url>,
+    /// JWT or ApiKey of user
+    #[structopt(long, global = true, env = "STORAGE_TOKEN")]
+    token: Option<String>,
     /// Allow invalid TLS certificates.
     #[structopt(long, global = true)]
     insecure: bool,
@@ -41,19 +44,13 @@ pub enum Command {
     /// Generate the corresponding secret.
     Secret(SecretCommand),
     /// Create a new volume (and private key).
-    Create(CreateCommand),
-    /// Return the latest snapshot available from a given parent.
-    Latest(LatestCommand),
+    VolumeCreate(VolumeCreateCommand),
     /// List all snapshots that exist.
-    List(ListCommand),
-    /// Upload a new snapshot.
-    Upload(UploadCommand),
+    SnapshotList(SnapshotListCommand),
     /// Upload a new snapshot using IPFS
     IpfsUpload(IpfsUploadCommand),
     /// Fetch data from IPFS.
     IpfsFetch(IpfsFetchCommand),
-    /// Fetch a snapshot.
-    Fetch(FetchCommand),
     /// Generate a manifest from JSON
     ManifestGenerate(ManifestGenerateCommand),
     ManifestParse(ManifestParseCommand),
@@ -94,44 +91,27 @@ pub struct ManifestParseCommand {
 }
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct CreateCommand {
+pub struct VolumeCreateCommand {
     #[structopt(long, short)]
     privkey: Option<Privkey>,
 }
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct ListCommand {
+pub struct SnapshotListCommand {
     #[structopt(long, short = "k")]
     privkey: Privkey,
     #[structopt(long, short)]
-    parent: Option<u64>,
-    #[structopt(long)]
-    genmin: Option<u64>,
-    #[structopt(long)]
-    genmax: Option<u64>,
+    parent: Option<Hash>,
+    #[structopt(long, short)]
+    root: bool,
 }
 
 #[derive(StructOpt, Debug, Clone)]
-pub struct LatestCommand {
+pub struct SnapshotFetchCommand {
     #[structopt(long, short = "k")]
     privkey: Privkey,
     #[structopt(long, short)]
-    parent: Option<u64>,
-}
-
-#[derive(StructOpt, Debug, Clone)]
-pub struct UploadCommand {
-    #[structopt(long, short = "k")]
-    privkey: Privkey,
-    #[structopt(long, short)]
-    generation: u64,
-    #[structopt(long, short)]
-    parent: Option<u64>,
-    #[structopt(long, short)]
-    creation: u64,
-
-    /// File to upload, if none specified, read from standard input.
-    file: Option<PathBuf>,
+    hash: Hash,
 }
 
 #[derive(StructOpt, Debug, Clone)]
@@ -156,19 +136,6 @@ pub struct IpfsFetchCommand {
     privkey: Option<Privkey>,
     cid: Cid,
     /// File to upload, if none specified, read from standard input.
-    file: Option<PathBuf>,
-}
-
-#[derive(StructOpt, Debug, Clone)]
-pub struct FetchCommand {
-    #[structopt(long, short = "k")]
-    privkey: Privkey,
-    #[structopt(long, short)]
-    generation: u64,
-    #[structopt(long, short)]
-    parent: Option<u64>,
-
-    /// File to save to, if none specified, piped to standard output.
     file: Option<PathBuf>,
 }
 
@@ -203,63 +170,37 @@ impl Options {
             .unwrap_or_else(|| Url::from_str(STORAGE_API).unwrap())
     }
 
+    pub fn token(&self) -> String {
+        self.token.clone().unwrap_or_else(|| String::new())
+    }
+
     pub async fn run(&self) -> Result<()> {
         let client = ClientBuilder::new()
             .danger_accept_invalid_certs(self.insecure)
             .build()?;
         match &self.command {
-            Command::Create(create) => {
+            Command::VolumeCreate(create) => {
                 let privkey = create.privkey.unwrap_or_else(|| {
                     let privkey = Privkey::generate();
                     println!("privkey {}", privkey);
                     privkey
                 });
-                let result = storage_api::create(&self.server(), &client, &privkey).await?;
-                if result {
-                    println!("pubkey {}", privkey.pubkey());
-                }
-                Ok(())
-            }
-            Command::List(opts) => {
-                let result = storage_api::list(
-                    &self.server(),
-                    &client,
-                    &opts.privkey.pubkey(),
-                    opts.parent,
-                    opts.genmin,
-                    opts.genmax,
-                )
-                .await?;
-                println!("{:#?}", result);
-                Ok(())
-            }
-            Command::Latest(opts) => {
-                let result = storage_api::latest(
-                    &self.server(),
-                    &client,
-                    &opts.privkey.pubkey(),
-                    opts.parent,
-                )
-                .await?;
-                println!("{:#?}", result);
-                Ok(())
-            }
-            Command::Upload(opts) => {
-                let header = SnapshotHeader {
-                    parent: opts.parent,
-                    generation: opts.generation,
-                    creation: opts.creation,
-                };
-
-                let input: Pin<Box<dyn AsyncRead + Send + Sync>> = match &opts.file {
-                    Some(file) => Box::pin(File::open(file).await?),
-                    None => Box::pin(stdin()),
-                };
-
+                let token = self.token();
                 let result =
-                    storage_api::upload(&self.server(), &client, &opts.privkey, &header, input)
-                        .await?;
-
+                    storage_api::volume_create(&self.server(), &client, &token, &privkey).await?;
+                println!("pubkey {}", privkey.pubkey());
+                Ok(())
+            }
+            Command::SnapshotList(opts) => {
+                let result = storage_api::snapshot_list(
+                    &self.server(),
+                    &client,
+                    &self.token(),
+                    &opts.privkey.pubkey(),
+                    opts.parent.as_ref(),
+                    opts.root,
+                )
+                .await?;
                 println!("{:#?}", result);
                 Ok(())
             }
@@ -298,23 +239,6 @@ impl Options {
                     }
                 }
 
-                Ok(())
-            }
-            Command::Fetch(opts) => {
-                let (header, mut stream) = storage_api::fetch(
-                    &self.server(),
-                    &client,
-                    &opts.privkey,
-                    opts.generation,
-                    opts.parent,
-                )
-                .await?;
-                let mut stdout = tokio::io::stdout();
-                eprintln!("{:#?}", header);
-                while let Some(data) = stream.next().await {
-                    let data = data?;
-                    stdout.write_all(&data).await?;
-                }
                 Ok(())
             }
             Command::ManifestGenerate(opts) => {
