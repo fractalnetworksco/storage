@@ -2,6 +2,7 @@ use crate::*;
 use bytes::Bytes;
 use futures::stream::{self, TryStreamExt};
 use ipfs_api::{IpfsClient, TryFromUri};
+use rand_core::{OsRng, RngCore};
 use std::ops::Deref;
 
 /// Generate an IPFS client from the IPFS_API env variable.
@@ -20,7 +21,6 @@ async fn test_ipfs_upload_data(ipfs_client: &IpfsClient, secret: &Secret, data: 
     let cid = ipfs::upload_encrypt(&ipfs_client, &secret, stream)
         .await
         .unwrap();
-    println!("Uploaded CID: {cid}");
     let stream = ipfs::fetch_decrypt(&ipfs_client, &secret, &cid)
         .await
         .unwrap();
@@ -29,7 +29,6 @@ async fn test_ipfs_upload_data(ipfs_client: &IpfsClient, secret: &Secret, data: 
         .try_concat()
         .await
         .unwrap();
-    println!("Got data: {stream_data:?}");
     assert_eq!(stream_data, data);
 }
 
@@ -37,11 +36,14 @@ async fn test_ipfs_upload_data(ipfs_client: &IpfsClient, secret: &Secret, data: 
 #[ignore]
 async fn test_ipfs_upload() {
     let privkey = Privkey::generate();
-    println!("Generated privkey {privkey}");
     let secret = privkey.derive_secret();
     let ipfs_client = ipfs_client();
     test_ipfs_upload_data(&ipfs_client, &secret, &[12, 21, 24, 102]).await;
     test_ipfs_upload_data(&ipfs_client, &secret, &[42; 1024]).await;
     test_ipfs_upload_data(&ipfs_client, &secret, &[123, 123, 123, 123, 123, 123]).await;
     test_ipfs_upload_data(&ipfs_client, &secret, &[104, 101, 108, 108, 111]).await;
+
+    let mut data = vec![0; 1 * 1024 * 1024];
+    let random_data = OsRng.fill_bytes(&mut data[..]);
+    test_ipfs_upload_data(&ipfs_client, &secret, &data).await;
 }
