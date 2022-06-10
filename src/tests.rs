@@ -44,6 +44,6 @@ async fn test_ipfs_upload() {
     test_ipfs_upload_data(&ipfs_client, &secret, &[104, 101, 108, 108, 111]).await;
 
     let mut data = vec![0; 1 * 1024 * 1024];
-    let random_data = OsRng.fill_bytes(&mut data[..]);
+    OsRng.fill_bytes(&mut data[..]);
     test_ipfs_upload_data(&ipfs_client, &secret, &data).await;
 }

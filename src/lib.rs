@@ -7,14 +7,7 @@ pub use crate::keys::{Hash, Privkey, Pubkey, Secret};
 pub use crate::manifest::*;
 pub use crate::types::*;
 use anyhow::Result;
-use bytes::Bytes;
-use ed25519::*;
-use futures::Stream;
-use reqwest::{Body, Client};
-use std::pin::Pin;
-use tokio::io::AsyncRead;
-use tokio_stream::StreamExt;
-use tokio_util::io::ReaderStream;
+use reqwest::Client;
 use url::Url;
 
 pub mod chacha20;
