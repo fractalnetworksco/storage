@@ -47,6 +47,8 @@ pub enum Command {
     VolumeCreate(VolumeCreateCommand),
     /// List all snapshots that exist.
     SnapshotList(SnapshotListCommand),
+    /// Fetch a snapshot.
+    SnapshotFetch(SnapshotFetchCommand),
     /// Upload a new snapshot using IPFS
     IpfsUpload(IpfsUploadCommand),
     /// Fetch data from IPFS.
@@ -135,12 +137,10 @@ pub struct IpfsFetchCommand {
     #[structopt(long, required_unless("secret"))]
     privkey: Option<Privkey>,
     cid: Cid,
-    /// File to upload, if none specified, read from standard input.
-    file: Option<PathBuf>,
 }
 
 async fn read_privkey() -> Result<Privkey> {
-    let mut stdin = BufReader::new(tokio::io::stdin());
+    let stdin = BufReader::new(tokio::io::stdin());
     let mut lines = stdin.lines();
     let line = lines.next_line().await?.ok_or(anyhow!("Error: no input"))?;
     Ok(Privkey::from_str(&line)?)
@@ -186,8 +186,7 @@ impl Options {
                     privkey
                 });
                 let token = self.token();
-                let result =
-                    storage_api::volume_create(&self.server(), &client, &token, &privkey).await?;
+                storage_api::volume_create(&self.server(), &client, &token, &privkey).await?;
                 println!("pubkey {}", privkey.pubkey());
                 Ok(())
             }
@@ -199,6 +198,18 @@ impl Options {
                     &opts.privkey.pubkey(),
                     opts.parent.as_ref(),
                     opts.root,
+                )
+                .await?;
+                println!("{:#?}", result);
+                Ok(())
+            }
+            Command::SnapshotFetch(opts) => {
+                let result = storage_api::snapshot_fetch(
+                    &self.server(),
+                    &client,
+                    &self.token(),
+                    &opts.privkey,
+                    &opts.hash,
                 )
                 .await?;
                 println!("{:#?}", result);
