@@ -1,17 +1,16 @@
 CARGO=cargo
 DOCKER=docker
 IMAGE_NAME=registry.gitlab.com/fractalnetworks/storage
-IMAGE_TAG=latest
-STORAGE_DATABASE=/var/tmp/gateway.db
-STORAGE_PATH=/var/tmp/storage
-STORAGE_ADDRESS=127.0.0.1
-STORAGE_PORT=8000
+IMAGE_TAG=local
+BUILD_TYPE=release
 ARCH=amd64
 
-release:
+default: target/$(BUILD_TYPE)/fractal-storage
+
+target/release/fractal-storage:
 	$(CARGO) build --release
 
-debug:
+target/debug/fractal-storage:
 	$(CARGO) build
 
 doc:
@@ -20,12 +19,7 @@ doc:
 test:
 	$(CARGO) test
 
-run: release
-	@mkdir -p $(STORAGE_PATH)
-	@touch $(STORAGE_DATABASE)
-	RUST_LOG=info,sqlx=warn RUST_BACKTRACE=1 ROCKET_ADDRESS=$(STORAGE_ADDRESS) ROCKET_PORT=$(STORAGE_PORT) $(CARGO) run --release -- --database $(STORAGE_DATABASE) --storage $(STORAGE_PATH)
-
-docker:
+docker: target/$(BUILD_TYPE)/fractal-storage
 	$(DOCKER) build . -t $(IMAGE_NAME):$(IMAGE_TAG)
 
 docker-push:
@@ -33,7 +27,7 @@ docker-push:
 
 docker-run:
 	-$(DOCKER) network create fractal
-	$(DOCKER) run --network fractal --name gateway -it --privileged --rm -p 8000:8000 $(IMAGE_NAME):$(IMAGE_TAG)
+	$(DOCKER) run --network fractal --name storage -it --privileged --rm -p 8000:8000 $(IMAGE_NAME):$(IMAGE_TAG)
 
 get-release-artifact:
 	./scripts/get-release-artifact.sh $(ARCH)
