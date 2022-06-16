@@ -28,15 +28,15 @@ serde = { version = "1.0.137", features = ["derive"] }
 serde-big-array = "0.4.1"
 sha2 = "0.10.2"
 thiserror = "1.0.31"
-tokio = { version = "1.19.2", optional = true }
-tokio-stream = { version = "0.1.9", optional = true }
-tokio-util = { version = "0.7.3", optional = true }
+tokio = { version = "1.19.2" }
+tokio-stream = { version = "0.1.9" }
+tokio-util = { version = "0.7.3", features = ["io", "compat"] }
 url = { version = "2.2.2", features = ["serde"] }
 uuid = { version = "1.1.1", features = ["serde", "v4"] }
 zeroize = "1.5.5"
 
 [features]
-default = ["tokio", "tokio-util/io", "tokio-util/compat", "tokio-stream", "hex", "base64"]
+default = ["hex", "base64"]
 api = []
 
 [dev-dependencies]
