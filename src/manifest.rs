@@ -18,6 +18,7 @@ pub struct Parent {
     pub volume: Option<(Pubkey, Secret)>,
 }
 
+/// Manifest for snapshot.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Manifest {
     /// Time that this snapshot was created.
@@ -37,21 +38,19 @@ pub struct Manifest {
     pub data: Url,
 }
 
+/// Signed manifest, keeps raw encoded data, decoded manifest, and raw signature.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ManifestSigned {
+    pub raw: Vec<u8>,
     pub manifest: Manifest,
     pub signature: Vec<u8>,
 }
 
 impl ManifestSigned {
+    /// Try parsing signed manifest from combined data.
     pub fn parse(from: &[u8]) -> Result<Self> {
         if let Some((manifest, signature)) = Manifest::split(from) {
-            let manifest = Manifest::decode(manifest)?;
-            let signature = signature.to_vec();
-            Ok(ManifestSigned {
-                manifest,
-                signature,
-            })
+            Ok(Self::from_parts(manifest, signature)?)
         } else {
             Err(anyhow!(
                 "Missing snapshot signature (got length {}, expected {})",
@@ -60,9 +59,36 @@ impl ManifestSigned {
             ))
         }
     }
+
+    /// Try parsing signed manifest from parts.
+    pub fn from_parts(manifest: &[u8], signature: &[u8]) -> Result<Self> {
+        let decoded = Manifest::decode(manifest)?;
+        let signature = signature.to_vec();
+        Ok(ManifestSigned {
+            raw: manifest.to_vec(),
+            manifest: decoded,
+            signature,
+        })
+    }
+
+    /// Validate this signed manifest.
+    pub fn validate(&self, pubkey: &Pubkey) -> Result<()> {
+        Manifest::validate(&self.raw, &self.signature, pubkey)
+    }
 }
 
 impl Manifest {
+    /// Given a manifest and a private key, produce a signed manifest.
+    pub fn sign(&self, privkey: &Privkey) -> ManifestSigned {
+        let encoded = self.encode();
+        let signature = Self::signature(&encoded, privkey);
+        ManifestSigned {
+            raw: encoded,
+            manifest: self.clone(),
+            signature,
+        }
+    }
+
     pub fn encode(&self) -> Vec<u8> {
         bincode::serialize(self).unwrap()
     }
