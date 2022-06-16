@@ -1,24 +1,18 @@
-use crate::snapshot::{Snapshot, SnapshotError, SnapshotHeader, SNAPSHOT_HEADER_SIZE};
+use crate::snapshot::{Snapshot, SnapshotError};
 use crate::volume::Volume;
-use crate::Options;
 use fractal_auth_client::UserContext;
-use rocket::http::Accept;
 use rocket::response::Redirect;
 use rocket::{
-    data::{ByteUnit, ToByteUnit},
-    fs::TempFile,
     http::Status,
-    request::{FromParam, Request},
-    response::stream::ReaderStream,
+    request::Request,
     response::{self, Responder, Response},
     serde::json::Json,
     *,
 };
-use sqlx::{query, AnyPool};
+use sqlx::AnyPool;
 use std::io::Cursor;
-use storage_api::{Hash, Manifest, Pubkey, SnapshotInfo};
+use storage_api::{Hash, Pubkey};
 use thiserror::Error;
-use tokio::fs::File;
 use uuid::Uuid;
 
 #[derive(Error, Debug)]
@@ -95,7 +89,7 @@ async fn volume_delete(
 
 #[post("/volume/<volume>/snapshot", data = "<data>")]
 async fn volume_snapshot_upload(
-    context: UserContext,
+    _context: UserContext,
     data: Vec<u8>,
     pool: &State<AnyPool>,
     volume: Pubkey,
@@ -112,7 +106,7 @@ async fn volume_snapshot_upload(
 
 #[get("/volume/<volume>/snapshots?<parent>&<root>")]
 async fn volume_snapshot_list(
-    context: UserContext,
+    _context: UserContext,
     pool: &State<AnyPool>,
     volume: Pubkey,
     parent: Option<Hash>,

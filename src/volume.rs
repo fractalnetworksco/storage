@@ -1,11 +1,9 @@
-use crate::snapshot::{Snapshot, SnapshotData};
+use crate::snapshot::SnapshotData;
 use anyhow::{anyhow, Result};
-use fractal_auth_client::UserContext;
 use sqlx::any::AnyRow;
-use sqlx::{query, AnyConnection, AnyPool, Row, SqlitePool};
-use std::path::Path;
+use sqlx::{query, AnyConnection, Row};
 use std::str::FromStr;
-use storage_api::{Privkey, Pubkey, SnapshotInfo};
+use storage_api::{Pubkey, SnapshotInfo};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -142,6 +140,9 @@ impl Volume {
 
 #[tokio::test]
 async fn test_volume() {
+    use sqlx::AnyPool;
+    use storage_api::Privkey;
+
     let pool = AnyPool::connect("sqlite://:memory:").await.unwrap();
     sqlx::migrate!().run(&pool).await.unwrap();
     let mut conn = pool.acquire().await.unwrap();

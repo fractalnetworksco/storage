@@ -5,12 +5,10 @@ mod tests;
 mod volume;
 
 use anyhow::Result;
-use fractal_auth_client::{key_store, AuthConfig, KeyStore};
-use rocket::fs::TempFile;
+use fractal_auth_client::{key_store, AuthConfig};
 use rocket::*;
 use sqlx::AnyPool;
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 use url::Url;
 

@@ -1,16 +1,10 @@
 use crate::volume::{Volume, VolumeData};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_trait::async_trait;
-use byteorder::{BigEndian, ReadBytesExt};
-use rocket::serde::uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use sqlx::any::AnyRow;
-use sqlx::{query, AnyConnection, AnyPool, Row, SqlitePool};
-use std::ffi::OsString;
-use std::io::Cursor;
-use std::path::{Path, PathBuf};
-use storage_api::{Hash, Manifest, Privkey, Pubkey, SnapshotInfo};
-pub use storage_api::{SnapshotHeader, SNAPSHOT_HEADER_SIZE};
+use sqlx::{query, AnyConnection, Row};
+use storage_api::{Hash, Manifest};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -146,7 +140,7 @@ impl Snapshot {
                     .ok_or_else(|| SnapshotError::MissingParent(parent.hash))?;
                 Some(snapshot.snapshot())
             }
-            Some(parent) => None,
+            Some(_parent) => None,
             None => None,
         };
 
@@ -216,6 +210,10 @@ impl Snapshot {
 
 #[tokio::test]
 async fn test_snapshot_create() {
+    use sqlx::AnyPool;
+    use storage_api::Privkey;
+    use uuid::Uuid;
+
     // create and connect database
     let pool = AnyPool::connect("sqlite://:memory:").await.unwrap();
     sqlx::migrate!().run(&pool).await.unwrap();
