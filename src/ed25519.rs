@@ -98,7 +98,6 @@ pub struct VerifyStream<E: StdError> {
     verification: Option<bool>,
     buffer: BytesMut,
     queue: Option<Bytes>,
-    state: VerifyStreamState,
 }
 
 #[derive(Debug)]
@@ -143,10 +142,6 @@ impl<E: StdError> VerifyStream<E> {
             verification: None,
             buffer: BytesMut::with_capacity(SIGNATURE_LENGTH),
             queue: None,
-            state: VerifyStreamState::Start(
-                Sha512::new(),
-                BytesMut::with_capacity(SIGNATURE_LENGTH),
-            ),
         }
     }
 
