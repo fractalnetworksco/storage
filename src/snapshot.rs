@@ -104,6 +104,7 @@ impl Snapshot {
         signature: &[u8],
         hash: &Hash,
         parent: Option<&Snapshot>,
+        generation: u64,
     ) -> Result<Snapshot, SnapshotError> {
         let result = query(
             "INSERT INTO storage_snapshot(
@@ -111,14 +112,16 @@ impl Snapshot {
             snapshot_manifest,
             snapshot_signature,
             snapshot_hash,
-            snapshot_parent)
-            VALUES (?, ?, ?, ?, ?)",
+            snapshot_parent,
+            snapshot_generation)
+            VALUES (?, ?, ?, ?, ?, ?)",
         )
         .bind(volume.id())
         .bind(manifest)
         .bind(signature)
         .bind(hash.as_slice())
         .bind(parent.map(|p| p.id()))
+        .bind(generation as i64)
         .execute(conn)
         .await?;
         Ok(Snapshot(
@@ -154,6 +157,7 @@ impl Snapshot {
             signature,
             &hash,
             parent.as_ref(),
+            parsed.generation,
         )
         .await?;
 
@@ -234,6 +238,7 @@ async fn test_snapshot_create() {
         &signature,
         &hash,
         None,
+        0,
     )
     .await
     .unwrap();

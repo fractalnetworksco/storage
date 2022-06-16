@@ -20,8 +20,11 @@ CREATE TABLE storage_snapshot(
     snapshot_signature BLOB NOT NULL,
     -- manifest hash (used as unique identifier)
     snapshot_hash BLOB UNIQUE NOT NULL,
+    -- manifest generation (not used but must be unique)
+    snapshot_generation INTEGER NOT NULL,
     -- pointer to parent snapshot
     snapshot_parent INTEGER REFERENCES storage_snapshot(snapshot_id) ON DELETE CASCADE,
     -- this snapshot is replicated
-    snapshot_replicated INTEGER NOT NULL DEFAULT 0
+    snapshot_replicated INTEGER NOT NULL DEFAULT 0,
+    UNIQUE (volume_id, snapshot_generation)
 );

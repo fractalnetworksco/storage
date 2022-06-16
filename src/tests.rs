@@ -386,7 +386,7 @@ async fn can_snapshot_list_child() {
 
         // upload a single snapshot with parent (child snapshot)
         let manifest = Manifest {
-            generation: 0,
+            generation: 1,
             creation: 0,
             machine,
             size: 10,
