@@ -171,6 +171,7 @@ async fn can_snapshot_upload() {
         let machine = Uuid::new_v4();
         volume_create(&url, &client, &token.to_string(), &volume).await?;
         let manifest = Manifest {
+            generation: 0,
             creation: 0,
             machine,
             size: 10,
@@ -196,6 +197,7 @@ async fn can_snapshot_fetch() {
         let machine = Uuid::new_v4();
         volume_create(&url, &client, &token.to_string(), &volume).await?;
         let manifest = Manifest {
+            generation: 0,
             creation: 0,
             machine,
             size: 10,
@@ -305,6 +307,7 @@ async fn can_snapshot_list_root() {
 
         // upload a single snapshot with no parent (root snapshot)
         let manifest = Manifest {
+            generation: 0,
             creation: 0,
             machine,
             size: 10,
@@ -369,6 +372,7 @@ async fn can_snapshot_list_child() {
 
         // upload a single snapshot with no parent (root snapshot)
         let manifest = Manifest {
+            generation: 0,
             creation: 0,
             machine,
             size: 10,
@@ -382,6 +386,7 @@ async fn can_snapshot_list_child() {
 
         // upload a single snapshot with parent (child snapshot)
         let manifest = Manifest {
+            generation: 0,
             creation: 0,
             machine,
             size: 10,
