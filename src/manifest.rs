@@ -28,6 +28,8 @@ pub struct Manifest {
     pub size: u64,
     /// Size of this snapshot and the previous ones.
     pub size_total: u64,
+    /// Generation count, monotonically incremented.
+    pub generation: u64,
     /// Parent snapshot (if exists).
     #[serde(default)]
     pub parent: Option<Parent>,
@@ -117,6 +119,7 @@ fn manifest_hash() {
     let manifest = Manifest {
         creation: 124123,
         machine: Uuid::default(),
+        generation: 0,
         size: 123412,
         size_total: 12341241,
         parent: None,
@@ -125,13 +128,14 @@ fn manifest_hash() {
             .unwrap(),
     };
     let manifest = manifest.encode();
-    assert_eq!(Manifest::hash(&manifest).to_hex(), "8a0074e5f4c55b033b661c0851e0db6b19dc4ba97632586b2de72107168e0078c05f585b2418cc2e1d234388001a4f50926b98e22a19731260031a3a16ab0a40");
+    assert_eq!(Manifest::hash(&manifest).to_hex(), "79ce0089925ebb47a0b4c4f13f71c507c4bbe0deff57e427faccf531fe93cf5af0daf1178abc1920c918d2ecf1bf0de73efaedf9ff53eefece475bd6b6dc4c0a");
 }
 
 #[test]
 fn manifest_encode_decode() {
     let manifest = Manifest {
         creation: 124123,
+        generation: 0,
         machine: Uuid::new_v4(),
         size: 123412,
         size_total: 12341241,
@@ -151,6 +155,7 @@ fn manifest_sign_and_verify() {
     let manifest = Manifest {
         creation: 124123,
         machine: Uuid::new_v4(),
+        generation: 0,
         size: 123412,
         size_total: 12341241,
         parent: None,
@@ -172,6 +177,7 @@ fn manifest_sign_split() {
         creation: 124123,
         machine: Uuid::new_v4(),
         size: 123412,
+        generation: 0,
         size_total: 12341241,
         parent: None,
         data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
