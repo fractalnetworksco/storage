@@ -75,6 +75,11 @@ impl ManifestSigned {
     pub fn validate(&self, pubkey: &Pubkey) -> Result<()> {
         Manifest::validate(&self.raw, &self.signature, pubkey)
     }
+
+    /// Generate hash of manifest.
+    pub fn hash(&self) -> Hash {
+        Manifest::hash(&self.raw)
+    }
 }
 
 impl Manifest {
