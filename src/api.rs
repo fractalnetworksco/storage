@@ -29,6 +29,8 @@ pub enum StorageError {
     FormatInvalid,
     #[error("Snapshot not found")]
     SnapshotNotFound,
+    #[error("Error talking to database: {0:}")]
+    Database(#[from] sqlx::Error),
 }
 
 impl<'r> Responder<'r, 'static> for StorageError {
@@ -42,6 +44,7 @@ impl<'r> Responder<'r, 'static> for StorageError {
             SnapshotNotFound => Status::NotFound,
             FormatInvalid => Status::BadRequest,
             Snapshot(_) => Status::InternalServerError,
+            Database(_) => Status::InternalServerError,
         };
         let message = self.to_string();
         let response = Response::build()
@@ -58,7 +61,7 @@ async fn volume_create(
     pool: &State<AnyPool>,
     volume: Pubkey,
 ) -> Result<(), StorageError> {
-    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    let mut conn = pool.acquire().await?;
     let account = Uuid::parse_str(&context.account().to_string()).unwrap();
     Volume::create(&mut conn, &volume, &account)
         .await
@@ -72,7 +75,7 @@ async fn volume_delete(
     pool: &State<AnyPool>,
     volume: Pubkey,
 ) -> Result<(), StorageError> {
-    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    let mut conn = pool.acquire().await?;
     let volume = Volume::lookup(&mut conn, &volume)
         .await
         .map_err(|_| StorageError::Internal)?
@@ -94,7 +97,7 @@ async fn volume_snapshot_upload(
     pool: &State<AnyPool>,
     volume: Pubkey,
 ) -> Result<Redirect, StorageError> {
-    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    let mut conn = pool.acquire().await?;
     let volume = Volume::lookup(&mut conn, &volume)
         .await
         .map_err(|_| StorageError::Internal)?
@@ -112,7 +115,7 @@ async fn volume_snapshot_list(
     parent: Option<Hash>,
     root: bool,
 ) -> Result<Json<Vec<Hash>>, StorageError> {
-    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    let mut conn = pool.acquire().await?;
     let volume = Volume::lookup(&mut conn, &volume)
         .await
         .map_err(|_| StorageError::Internal)?
@@ -140,7 +143,7 @@ async fn volume_snapshot_get(
     volume: Pubkey,
     snapshot: Hash,
 ) -> Result<Vec<u8>, StorageError> {
-    let mut conn = pool.acquire().await.map_err(|_| StorageError::Internal)?;
+    let mut conn = pool.acquire().await?;
     let volume = Volume::lookup(&mut conn, &volume)
         .await
         .map_err(|_| StorageError::Internal)?
