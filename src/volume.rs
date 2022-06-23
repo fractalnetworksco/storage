@@ -1,4 +1,4 @@
-use crate::snapshot::SnapshotData;
+use crate::snapshot::{SnapshotData, SnapshotError};
 use anyhow::{anyhow, Result};
 use sqlx::any::AnyRow;
 use sqlx::{query, AnyConnection, Row};
@@ -16,8 +16,20 @@ pub struct VolumeData {
     account: Uuid,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum VolumeError {
+    #[error("Error talking to database: {0:}")]
+    DatabaseError(#[from] sqlx::Error),
+    #[error("Error inserting data: missing rowid")]
+    MissingRowid,
+    #[error("Error parsing UUID: {0:}")]
+    ParseUuid(#[from] uuid::Error),
+    #[error("Error parsing key: {0:}")]
+    ParseKey(#[from] storage_api::keys::ParseError),
+}
+
 impl VolumeData {
-    pub fn from_row(row: &AnyRow) -> Result<Self> {
+    pub fn from_row(row: &AnyRow) -> Result<Self, VolumeError> {
         let id: i64 = row.try_get("volume_id")?;
         let key: &[u8] = row.try_get("volume_pubkey")?;
         let account: &str = row.try_get("account_id")?;
@@ -29,7 +41,7 @@ impl VolumeData {
         })
     }
 
-    pub async fn delete(&self, conn: &mut AnyConnection) -> Result<()> {
+    pub async fn delete(&self, conn: &mut AnyConnection) -> Result<(), VolumeError> {
         query("DELETE FROM storage_volume WHERE volume_id = ?")
             .bind(self.id)
             .execute(conn)
@@ -58,7 +70,7 @@ impl VolumeData {
         conn: &mut AnyConnection,
         snapshot: &SnapshotInfo,
         file: &str,
-    ) -> Result<()> {
+    ) -> Result<(), VolumeError> {
         query(
             "INSERT INTO storage_snapshot(volume_id, snapshot_generation, snapshot_parent, snapshot_time, snapshot_size, snapshot_file)
                 VALUES (?, ?, ?, ?, ?, ?)")
@@ -78,7 +90,7 @@ impl VolumeData {
         conn: &mut AnyConnection,
         generation: u64,
         parent: Option<u64>,
-    ) -> Result<Option<SnapshotData>> {
+    ) -> Result<Option<SnapshotData>, SnapshotError> {
         let row = query(
             "SELECT * FROM storage_snapshot
                 WHERE volume_id = ?
@@ -99,7 +111,11 @@ impl VolumeData {
 }
 
 impl Volume {
-    pub async fn create(conn: &mut AnyConnection, pubkey: &Pubkey, account: &Uuid) -> Result<Self> {
+    pub async fn create(
+        conn: &mut AnyConnection,
+        pubkey: &Pubkey,
+        account: &Uuid,
+    ) -> Result<Self, VolumeError> {
         let result = query(
             "INSERT INTO storage_volume(volume_pubkey, account_id)
             VALUES (?, ?)",
@@ -109,11 +125,14 @@ impl Volume {
         .execute(conn)
         .await?;
         Ok(Volume(
-            result.last_insert_id().ok_or(anyhow!("Missing rowid"))?,
+            result.last_insert_id().ok_or(VolumeError::MissingRowid)?,
         ))
     }
 
-    pub async fn lookup(conn: &mut AnyConnection, pubkey: &Pubkey) -> Result<Option<VolumeData>> {
+    pub async fn lookup(
+        conn: &mut AnyConnection,
+        pubkey: &Pubkey,
+    ) -> Result<Option<VolumeData>, VolumeError> {
         let result = query(
             "SELECT * FROM storage_volume
                 WHERE volume_pubkey = ?",
@@ -128,7 +147,7 @@ impl Volume {
         }
     }
 
-    pub fn from_row(row: &AnyRow) -> Result<Self> {
+    pub fn from_row(row: &AnyRow) -> Result<Self, VolumeError> {
         let id: i64 = row.try_get("volume_id")?;
         Ok(Volume(id))
     }

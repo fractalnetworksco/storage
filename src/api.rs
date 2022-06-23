@@ -1,5 +1,5 @@
 use crate::snapshot::{Snapshot, SnapshotError};
-use crate::volume::Volume;
+use crate::volume::{Volume, VolumeError};
 use fractal_auth_client::UserContext;
 use rocket::response::Redirect;
 use rocket::{
@@ -21,8 +21,10 @@ pub enum StorageError {
     VolumeNotFound,
     #[error("Internal Error")]
     Internal,
-    #[error("Internal Error: {0:}")]
+    #[error("Error in snapshots: {0:}")]
     Snapshot(#[from] SnapshotError),
+    #[error("Error in volume: {0:}")]
+    Volume(#[from] VolumeError),
     #[error("Manifest Invalid")]
     ManifestInvalid,
     #[error("Format invalid")]
@@ -44,6 +46,7 @@ impl<'r> Responder<'r, 'static> for StorageError {
             SnapshotNotFound => Status::NotFound,
             FormatInvalid => Status::BadRequest,
             Snapshot(_) => Status::InternalServerError,
+            Volume(_) => Status::InternalServerError,
             Database(_) => Status::InternalServerError,
         };
         let message = self.to_string();
