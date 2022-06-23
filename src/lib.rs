@@ -117,27 +117,22 @@ pub async fn snapshot_upload(
     api: &Url,
     client: &Client,
     token: &str,
-    volume: &Privkey,
-    manifest: &Manifest,
-) -> Result<Hash, Error> {
+    volume: &Pubkey,
+    manifest: &ManifestSigned,
+) -> Result<(), Error> {
     let url = api
-        .join(&format!(
-            "/api/v1/volume/{}/snapshot",
-            &volume.pubkey().to_hex()
-        ))
+        .join(&format!("/api/v1/volume/{}/snapshot", &volume.to_hex()))
         .unwrap();
-    let hash = Manifest::hash(&manifest.encode());
-    let manifest = manifest.signed(volume);
     let response = client
         .post(url)
         .header("Authorization", format!("Bearer {token}"))
-        .body(manifest)
+        .body(manifest.data())
         .send()
         .await?;
     if !response.status().is_success() {
         return Err(Error::Unsuccessful(response.status()));
     }
-    Ok(hash)
+    Ok(())
 }
 
 /// Upload a new snapshot

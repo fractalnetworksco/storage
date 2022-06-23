@@ -71,6 +71,15 @@ impl ManifestSigned {
         })
     }
 
+    /// Return the raw data for this signature
+    pub fn data(&self) -> Vec<u8> {
+        self.raw
+            .iter()
+            .chain(self.signature.iter())
+            .cloned()
+            .collect()
+    }
+
     /// Validate this signed manifest.
     pub fn validate(&self, pubkey: &Pubkey) -> Result<()> {
         Manifest::validate(&self.raw, &self.signature, pubkey)
