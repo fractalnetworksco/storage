@@ -66,9 +66,7 @@ async fn volume_create(
 ) -> Result<(), StorageError> {
     let mut conn = pool.acquire().await?;
     let account = Uuid::parse_str(&context.account().to_string()).unwrap();
-    Volume::create(&mut conn, &volume, &account)
-        .await
-        .map_err(|_| StorageError::Internal)?;
+    Volume::create(&mut conn, &volume, &account).await?;
     Ok(())
 }
 
@@ -80,15 +78,11 @@ async fn volume_delete(
 ) -> Result<(), StorageError> {
     let mut conn = pool.acquire().await?;
     let volume = Volume::lookup(&mut conn, &volume)
-        .await
-        .map_err(|_| StorageError::Internal)?
+        .await?
         .ok_or(StorageError::VolumeNotFound)?;
     let account = Uuid::parse_str(&context.account().to_string()).unwrap();
     if volume.account() == &account {
-        volume
-            .delete(&mut conn)
-            .await
-            .map_err(|_| StorageError::Internal)?;
+        volume.delete(&mut conn).await?;
     }
     Ok(())
 }
@@ -102,8 +96,7 @@ async fn volume_snapshot_upload(
 ) -> Result<Redirect, StorageError> {
     let mut conn = pool.acquire().await?;
     let volume = Volume::lookup(&mut conn, &volume)
-        .await
-        .map_err(|_| StorageError::Internal)?
+        .await?
         .ok_or(StorageError::VolumeNotFound)?;
     let snapshot = Snapshot::create_from_manifest(&mut conn, &volume, &data).await?;
     let snapshot = snapshot.fetch(&mut conn).await?;
@@ -120,8 +113,7 @@ async fn volume_snapshot_list(
 ) -> Result<Json<Vec<Hash>>, StorageError> {
     let mut conn = pool.acquire().await?;
     let volume = Volume::lookup(&mut conn, &volume)
-        .await
-        .map_err(|_| StorageError::Internal)?
+        .await?
         .ok_or(StorageError::VolumeNotFound)?;
     let parent = match parent {
         Some(hash) => Some(
@@ -133,8 +125,7 @@ async fn volume_snapshot_list(
         None => None,
     };
     let snapshots = Snapshot::list(&mut conn, &volume.volume(), parent.as_ref(), root)
-        .await
-        .map_err(|_| StorageError::Internal)?;
+        .await?;
     Ok(Json(
         snapshots.iter().map(|snapshot| snapshot.hash()).collect(),
     ))
@@ -148,8 +139,7 @@ async fn volume_snapshot_get(
 ) -> Result<Vec<u8>, StorageError> {
     let mut conn = pool.acquire().await?;
     let volume = Volume::lookup(&mut conn, &volume)
-        .await
-        .map_err(|_| StorageError::Internal)?
+        .await?
         .ok_or(StorageError::VolumeNotFound)?;
     let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &snapshot)
         .await?
