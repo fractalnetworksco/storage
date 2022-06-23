@@ -1,5 +1,4 @@
 use crate::volume::{Volume, VolumeData};
-use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use sqlx::any::AnyRow;
@@ -187,7 +186,7 @@ impl Snapshot {
         volume: &Volume,
         parent: Option<&Snapshot>,
         root: bool,
-    ) -> Result<Vec<SnapshotData>> {
+    ) -> Result<Vec<SnapshotData>, SnapshotError> {
         let rows = query(
             "SELECT * FROM storage_snapshot
                 WHERE volume_id = $1

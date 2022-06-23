@@ -1,5 +1,4 @@
 use crate::snapshot::{SnapshotData, SnapshotError};
-use anyhow::{anyhow, Result};
 use sqlx::any::AnyRow;
 use sqlx::{query, AnyConnection, Row};
 use std::str::FromStr;
