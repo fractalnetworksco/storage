@@ -181,7 +181,15 @@ async fn can_snapshot_upload() {
                 .try_into()
                 .unwrap(),
         };
-        snapshot_upload(&url, &client, &token.to_string(), &volume, &manifest).await?;
+        let manifest = manifest.sign(&volume);
+        snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await?;
         Ok(())
     })
     .await
@@ -207,10 +215,18 @@ async fn can_snapshot_fetch() {
                 .try_into()
                 .unwrap(),
         };
-        let hash = snapshot_upload(&url, &client, &token.to_string(), &volume, &manifest).await?;
+        let manifest = manifest.sign(&volume);
+        snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await?;
         let signed_manifest =
-            snapshot_fetch(&url, &client, &token.to_string(), &volume, &hash).await?;
-        assert_eq!(manifest, signed_manifest.manifest);
+            snapshot_fetch(&url, &client, &token.to_string(), &volume, &manifest.hash()).await?;
+        assert_eq!(manifest, signed_manifest);
         Ok(())
     })
     .await
@@ -317,7 +333,15 @@ async fn can_snapshot_list_root() {
                 .try_into()
                 .unwrap(),
         };
-        let hash = snapshot_upload(&url, &client, &token.to_string(), &volume, &manifest).await?;
+        let manifest = manifest.sign(&volume);
+        snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await?;
 
         // listing with no options should return this snapshot
         let result = snapshot_list(
@@ -329,7 +353,7 @@ async fn can_snapshot_list_root() {
             false,
         )
         .await?;
-        assert_eq!(result, vec![hash]);
+        assert_eq!(result, vec![manifest.hash()]);
 
         // listing with root set to true should return this snapshot
         let result = snapshot_list(
@@ -341,7 +365,7 @@ async fn can_snapshot_list_root() {
             true,
         )
         .await?;
-        assert_eq!(result, vec![hash]);
+        assert_eq!(result, vec![manifest.hash()]);
 
         Ok(())
     })
@@ -382,7 +406,16 @@ async fn can_snapshot_list_child() {
                 .try_into()
                 .unwrap(),
         };
-        let parent = snapshot_upload(&url, &client, &token.to_string(), &volume, &manifest).await?;
+        let manifest = manifest.sign(&volume);
+        let parent = manifest.hash();
+        snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await?;
 
         // upload a single snapshot with parent (child snapshot)
         let manifest = Manifest {
@@ -399,7 +432,16 @@ async fn can_snapshot_list_child() {
                 .try_into()
                 .unwrap(),
         };
-        let child = snapshot_upload(&url, &client, &token.to_string(), &volume, &manifest).await?;
+        let manifest = manifest.sign(&volume);
+        let child = manifest.hash();
+        snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await?;
 
         // listing with no options should return all snapshots
         let result = snapshot_list(
