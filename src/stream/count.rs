@@ -24,12 +24,12 @@ impl BytesCount {
 
     /// Adds a value to the counter
     pub fn add(&self, value: usize) {
-        self.bytes.fetch_add(value, Ordering::Relaxed);
+        self.bytes.fetch_add(value, Ordering::SeqCst);
     }
 
     /// Fetches the current value
     pub fn get(&self) -> usize {
-        self.bytes.load(Ordering::Relaxed)
+        self.bytes.load(Ordering::SeqCst)
     }
 }
 
@@ -62,13 +62,15 @@ impl<E: StdError> Stream for CountBytesStream<E> {
     type Item = Result<Bytes, E>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match Pin::new(&mut self.stream).poll_next(cx) {
+        let result = Pin::new(&mut self.stream).poll_next(cx);
+        debug!("Got: {result:?}");
+        match result {
             Poll::Ready(Some(Ok(bytes))) => {
                 self.count.add(bytes.len());
-                Poll::Ready(Some(Ok(bytes)))
             }
-            other => other,
+            _ => (),
         }
+        result
     }
 }
 
