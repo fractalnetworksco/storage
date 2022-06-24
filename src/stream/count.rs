@@ -72,6 +72,7 @@ impl<E: StdError> Stream for CountBytesStream<E> {
     }
 }
 
+#[cfg(test)]
 #[tokio::test]
 async fn can_measure_bytes() {
     use futures::StreamExt;
@@ -89,6 +90,7 @@ async fn can_measure_bytes() {
     assert_eq!(stream.bytes_count().get(), 5);
 }
 
+#[cfg(test)]
 #[tokio::test]
 async fn can_measure_bytes_multiple() {
     use futures::StreamExt;

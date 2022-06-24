@@ -20,6 +20,21 @@ pub struct Parent {
     pub volume: Option<(Pubkey, Secret)>,
 }
 
+impl Parent {
+    /// Initialize new parent with given hash
+    pub fn new(hash: Hash) -> Self {
+        Parent { hash, volume: None }
+    }
+
+    /// Given a parent, add a volume
+    pub fn with_volume(self, pubkey: Pubkey, secret: Secret) -> Self {
+        Parent {
+            volume: Some((pubkey, secret)),
+            hash: self.hash,
+        }
+    }
+}
+
 /// Manifest for snapshot.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Manifest {
