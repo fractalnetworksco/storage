@@ -4,6 +4,8 @@ use anyhow::{anyhow, Result};
 use ed25519_dalek_fiat::{ExpandedSecretKey, PublicKey, SecretKey, Signature, Verifier};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
+use std::path::PathBuf;
+use std::str::FromStr;
 use url::Url;
 use uuid::Uuid;
 
@@ -25,6 +27,8 @@ pub struct Manifest {
     pub creation: u64,
     /// Machine that this snapshot was created on.
     pub machine: Uuid,
+    /// Path to snapshot
+    pub path: PathBuf,
     /// Size of this snapshot, in bytes.
     pub size: u64,
     /// Size of this snapshot and the previous ones.
@@ -159,6 +163,7 @@ fn manifest_hash() {
     let manifest = Manifest {
         creation: 124123,
         machine: Uuid::default(),
+        path: PathBuf::from_str("/tmp/path").unwrap(),
         generation: 0,
         size: 123412,
         size_total: 12341241,
@@ -168,7 +173,7 @@ fn manifest_hash() {
             .unwrap(),
     };
     let manifest = manifest.encode();
-    assert_eq!(Manifest::hash(&manifest).to_hex(), "79ce0089925ebb47a0b4c4f13f71c507c4bbe0deff57e427faccf531fe93cf5af0daf1178abc1920c918d2ecf1bf0de73efaedf9ff53eefece475bd6b6dc4c0a");
+    assert_eq!(Manifest::hash(&manifest).to_hex(), "ab93233657a07df4bde570f9b2ad3d069e14fc80e5b07c3773a937d624b8f7bbf2dade0a3d48a121274e1fc8e787d72fd88171f10a66e84e4207a03d45acf637");
 }
 
 #[test]
@@ -177,6 +182,7 @@ fn manifest_encode_decode() {
         creation: 124123,
         generation: 0,
         machine: Uuid::new_v4(),
+        path: PathBuf::from_str("/tmp/path").unwrap(),
         size: 123412,
         size_total: 12341241,
         parent: None,
@@ -195,6 +201,7 @@ fn manifest_sign_and_verify() {
     let manifest = Manifest {
         creation: 124123,
         machine: Uuid::new_v4(),
+        path: PathBuf::from_str("/tmp/path").unwrap(),
         generation: 0,
         size: 123412,
         size_total: 12341241,
@@ -217,6 +224,7 @@ fn manifest_sign_split() {
         creation: 124123,
         machine: Uuid::new_v4(),
         size: 123412,
+        path: PathBuf::from_str("/tmp/path").unwrap(),
         generation: 0,
         size_total: 12341241,
         parent: None,
