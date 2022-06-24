@@ -1,20 +1,19 @@
 //! Library used to interact with storage backend and IPFS (to store
 //! encrypted snapshots and manage metadata).
 
-pub use crate::chacha20::{DecryptionStream, EncryptionStream};
 pub use crate::ipfs::*;
 pub use crate::keys::{Hash, Privkey, Pubkey, Secret};
 pub use crate::manifest::*;
+pub use crate::stream::chacha20::{DecryptionStream, EncryptionStream};
 pub use crate::types::*;
 use anyhow::Result;
 use reqwest::Client;
 use url::Url;
 
-pub mod chacha20;
-pub mod ed25519;
 mod ipfs;
 pub mod keys;
 mod manifest;
+pub mod stream;
 #[cfg(test)]
 mod tests;
 mod types;
