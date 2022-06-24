@@ -153,6 +153,11 @@ impl Privkey {
         let output = hasher.finalize();
         Secret(output.as_slice().try_into().unwrap())
     }
+
+    /// Derive secret from PrivKey and turn into ChaCha20 key
+    pub fn to_chacha20_key(&self) -> chacha20::Key {
+        self.derive_secret().to_chacha20_key()
+    }
 }
 
 #[test]
@@ -232,6 +237,11 @@ impl Secret {
     #[cfg(test)]
     pub fn test_generate() -> Self {
         Self::generate()
+    }
+
+    /// Turn secret into ChaCha20 key
+    pub fn to_chacha20_key(&self) -> chacha20::Key {
+        chacha20::Key::clone_from_slice(self.as_slice())
     }
 }
 

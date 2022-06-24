@@ -1,6 +1,5 @@
 use crate::keys::Secret;
 use crate::stream::chacha20::{DecryptionStream, EncryptionStream};
-use crate::stream::ed25519::*;
 use anyhow::Result;
 use bytes::Bytes;
 use cid::Cid;
