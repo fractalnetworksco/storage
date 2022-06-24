@@ -28,6 +28,8 @@ pub enum Error {
     Unsuccessful(reqwest::StatusCode),
     #[error("Other error occured: {0:?}")]
     Other(#[from] anyhow::Error),
+    #[error("Error parsing manifest: {0:}")]
+    ManifestSignedParse(#[from] ManifestSignedParseError),
 }
 
 /// Health check.

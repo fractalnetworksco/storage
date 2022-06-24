@@ -65,22 +65,26 @@ pub struct ManifestSigned {
     pub signature: Vec<u8>,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum ManifestSignedParseError {
+    #[error("Error decoding bincode: {0:}")]
+    Bincode(#[from] Box<bincode::ErrorKind>),
+    #[error("Missing snapshot signature, got length {0:}, expected {MANIFEST_SIGNATURE_LENGTH}")]
+    MissingSignature(usize),
+}
+
 impl ManifestSigned {
     /// Try parsing signed manifest from combined data.
-    pub fn parse(from: &[u8]) -> Result<Self> {
+    pub fn parse(from: &[u8]) -> Result<Self, ManifestSignedParseError> {
         if let Some((manifest, signature)) = Manifest::split(from) {
             Ok(Self::from_parts(manifest, signature)?)
         } else {
-            Err(anyhow!(
-                "Missing snapshot signature (got length {}, expected {})",
-                from.len(),
-                MANIFEST_SIGNATURE_LENGTH
-            ))
+            Err(ManifestSignedParseError::MissingSignature(from.len()))
         }
     }
 
     /// Try parsing signed manifest from parts.
-    pub fn from_parts(manifest: &[u8], signature: &[u8]) -> Result<Self> {
+    pub fn from_parts(manifest: &[u8], signature: &[u8]) -> Result<Self, Box<bincode::ErrorKind>> {
         let decoded = Manifest::decode(manifest)?;
         let signature = signature.to_vec();
         Ok(ManifestSigned {
