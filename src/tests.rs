@@ -8,6 +8,8 @@ use sqlx::AnyPool;
 use std::future::Future;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::ops::Range;
+use std::path::PathBuf;
+use std::str::FromStr;
 use std::time::Duration;
 use storage_api::*;
 use url::Url;
@@ -172,6 +174,7 @@ async fn can_snapshot_upload() {
         volume_create(&url, &client, &token.to_string(), &volume).await?;
         let manifest = Manifest {
             generation: 0,
+            path: PathBuf::from_str("/tmp/path").unwrap(),
             creation: 0,
             machine,
             size: 10,
@@ -207,6 +210,7 @@ async fn can_snapshot_fetch() {
         let manifest = Manifest {
             generation: 0,
             creation: 0,
+            path: PathBuf::from_str("/tmp/path").unwrap(),
             machine,
             size: 10,
             size_total: 10,
@@ -325,6 +329,7 @@ async fn can_snapshot_list_root() {
         let manifest = Manifest {
             generation: 0,
             creation: 0,
+            path: PathBuf::from_str("/tmp/path").unwrap(),
             machine,
             size: 10,
             size_total: 10,
@@ -398,6 +403,7 @@ async fn can_snapshot_list_child() {
         let manifest = Manifest {
             generation: 0,
             creation: 0,
+            path: PathBuf::from_str("/tmp/path").unwrap(),
             machine,
             size: 10,
             size_total: 10,
@@ -421,6 +427,7 @@ async fn can_snapshot_list_child() {
         let manifest = Manifest {
             generation: 1,
             creation: 0,
+            path: PathBuf::from_str("/tmp/path").unwrap(),
             machine,
             size: 10,
             size_total: 10,

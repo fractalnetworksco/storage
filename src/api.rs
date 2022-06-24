@@ -124,8 +124,7 @@ async fn volume_snapshot_list(
         ),
         None => None,
     };
-    let snapshots = Snapshot::list(&mut conn, &volume.volume(), parent.as_ref(), root)
-        .await?;
+    let snapshots = Snapshot::list(&mut conn, &volume.volume(), parent.as_ref(), root).await?;
     Ok(Json(
         snapshots.iter().map(|snapshot| snapshot.hash()).collect(),
     ))
