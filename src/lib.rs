@@ -4,7 +4,7 @@
 pub use crate::ipfs::*;
 pub use crate::keys::{Hash, Privkey, Pubkey, Secret};
 pub use crate::manifest::*;
-pub use crate::stream::chacha20::{DecryptionStream, EncryptionStream};
+pub use crate::stream::*;
 pub use crate::types::*;
 use anyhow::Result;
 use reqwest::Client;

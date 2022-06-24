@@ -1,5 +1,5 @@
 use crate::keys::Secret;
-use crate::stream::chacha20::{DecryptionStream, EncryptionStream};
+use crate::stream::*;
 use anyhow::Result;
 use bytes::Bytes;
 use cid::Cid;
@@ -14,7 +14,7 @@ pub async fn upload_encrypt(
     secret: &Secret,
     data: Pin<Box<dyn Stream<Item = Result<Bytes, std::io::Error>> + Send + Sync>>,
 ) -> Result<Cid> {
-    let stream = EncryptionStream::new(data, &secret.to_chacha20_key());
+    let stream = ChaCha20EncryptionStream::new(data, &secret.to_chacha20_key());
     let reader = stream.into_async_read();
     let cid = ipfs.add_async(reader).await?;
     let cid = Cid::from_str(&cid.hash)?;
@@ -28,6 +28,9 @@ pub async fn fetch_decrypt(
     cid: &Cid,
 ) -> Result<Pin<Box<dyn Stream<Item = Result<Bytes, ipfs_api::Error>> + Send>>, Error> {
     let data = ipfs.cat(&cid.to_string());
-    let data = Box::pin(DecryptionStream::new(data, &secret.to_chacha20_key()));
+    let data = Box::pin(ChaCha20DecryptionStream::new(
+        data,
+        &secret.to_chacha20_key(),
+    ));
     Ok(data)
 }
