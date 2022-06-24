@@ -112,6 +112,11 @@ async fn with_service<F>(test: impl FnOnce(Url) -> F) -> Result<()>
 where
     F: Future<Output = Result<()>>,
 {
+    // initialize logger that is off by default but can be enabled using `RUST_LOG` env
+    let _result = env_logger::builder()
+        .parse_filters("off")
+        .parse_default_env()
+        .try_init();
     let port = thread_rng().gen_range(PORT_RANGE);
     let listen = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port);
     let options = options_default(listen);
@@ -405,8 +410,8 @@ async fn can_snapshot_list_child() {
             creation: 0,
             path: PathBuf::from_str("/tmp/path").unwrap(),
             machine,
-            size: 10,
-            size_total: 10,
+            size: crate::snapshot::MINIMUM_SNAPSHOT_SIZE,
+            size_total: crate::snapshot::MINIMUM_SNAPSHOT_SIZE,
             parent: None,
             data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
                 .try_into()
@@ -429,8 +434,8 @@ async fn can_snapshot_list_child() {
             creation: 0,
             path: PathBuf::from_str("/tmp/path").unwrap(),
             machine,
-            size: 10,
-            size_total: 10,
+            size: crate::snapshot::MINIMUM_SNAPSHOT_SIZE,
+            size_total: 2 * crate::snapshot::MINIMUM_SNAPSHOT_SIZE,
             parent: Some(Parent {
                 hash: parent,
                 volume: None,

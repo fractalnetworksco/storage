@@ -8,7 +8,7 @@ use thiserror::Error;
 
 /// Minimum accepted size for BTRFS snapshot. Experientally determined, used as safeguard
 /// to prevent broken snapshots from being accepted.
-const MINIMUM_SNAPSHOT_SIZE: u64 = 64;
+pub const MINIMUM_SNAPSHOT_SIZE: u64 = 64;
 
 #[derive(Error, Debug)]
 pub enum SnapshotError {
@@ -159,7 +159,7 @@ impl Snapshot {
                         expected_size_total,
                     ));
                 }
-                if parsed.generation >= parent.manifest().generation {
+                if parsed.generation <= parent.manifest().generation {
                     return Err(SnapshotError::InvalidGeneration(
                         parsed.generation,
                         parent.manifest().generation,
@@ -171,7 +171,15 @@ impl Snapshot {
                 Some(parent.snapshot())
             }
             Some(_parent) => None,
-            None => None,
+            None => {
+                if parsed.size != parsed.size_total {
+                    return Err(SnapshotError::WrongSizeTotal(
+                        parsed.size_total,
+                        parsed.size,
+                    ));
+                }
+                None
+            }
         };
 
         let snapshot = Snapshot::create(
@@ -256,15 +264,23 @@ async fn test_snapshot_create() {
     Volume::create(&mut conn, &pubkey, &account).await.unwrap();
     let volume = Volume::lookup(&mut conn, &pubkey).await.unwrap().unwrap();
 
-    let manifest = vec![66; 60];
-    let signature = vec![14; 24];
-    let hash = Manifest::hash(&manifest);
+    let manifest = Manifest {
+        creation: 0,
+        data: "ipfs://asd99a0s8098da0sd98".parse().unwrap(),
+        generation: 0,
+        parent: None,
+        size: MINIMUM_SNAPSHOT_SIZE,
+        size_total: MINIMUM_SNAPSHOT_SIZE,
+        machine: Default::default(),
+        path: std::path::PathBuf::from("abc"),
+    };
+    let manifest_signed = manifest.sign(&privkey);
     let snapshot = Snapshot::create(
         &mut conn,
         &volume.volume(),
-        &manifest,
-        &signature,
-        &hash,
+        &manifest_signed.raw,
+        &manifest_signed.signature,
+        &manifest_signed.hash(),
         None,
         0,
     )
@@ -273,16 +289,17 @@ async fn test_snapshot_create() {
 
     let snapshot_data = snapshot.fetch(&mut conn).await.unwrap();
     assert_eq!(snapshot_data.snapshot(), snapshot);
-    assert_eq!(snapshot_data.manifest(), manifest);
-    assert_eq!(snapshot_data.signature(), signature);
-    assert_eq!(snapshot_data.hash(), hash);
+    assert_eq!(snapshot_data.manifest_signed().raw, manifest_signed.raw);
+    assert_eq!(snapshot_data.signature(), manifest_signed.signature);
+    assert_eq!(snapshot_data.hash(), manifest_signed.hash());
 
-    let snapshot_data = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &hash)
-        .await
-        .unwrap()
-        .unwrap();
+    let snapshot_data =
+        Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &manifest_signed.hash())
+            .await
+            .unwrap()
+            .unwrap();
     assert_eq!(snapshot_data.snapshot(), snapshot);
-    assert_eq!(snapshot_data.manifest(), manifest);
-    assert_eq!(snapshot_data.signature(), signature);
-    assert_eq!(snapshot_data.hash(), hash);
+    assert_eq!(snapshot_data.manifest_signed().raw, manifest_signed.raw);
+    assert_eq!(snapshot_data.signature(), manifest_signed.signature);
+    assert_eq!(snapshot_data.hash(), manifest_signed.hash());
 }
