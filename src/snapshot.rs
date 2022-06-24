@@ -3,8 +3,12 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use sqlx::any::AnyRow;
 use sqlx::{query, AnyConnection, Row};
-use storage_api::{Hash, Manifest};
+use storage_api::{Hash, Manifest, ManifestSigned};
 use thiserror::Error;
+
+/// Minimum accepted size for BTRFS snapshot. Experientally determined, used as safeguard
+/// to prevent broken snapshots from being accepted.
+const MINIMUM_SNAPSHOT_SIZE: u64 = 64;
 
 #[derive(Error, Debug)]
 pub enum SnapshotError {
@@ -14,8 +18,16 @@ pub enum SnapshotError {
     Database(#[from] sqlx::Error),
     #[error("Missing rowid")]
     MissingRowid,
+    #[error("Wrong size_total, expected {0:} but got {1:}")]
+    WrongSizeTotal(u64, u64),
     #[error("Missing parent with hash {0:}")]
     MissingParent(Hash),
+    #[error("Cannot decode manifest: {0:}")]
+    ManifestDecode(String),
+    #[error("Invalid generation: manifest has generation {0:} but parent has {1:}")]
+    InvalidGeneration(u64, u64),
+    #[error("Invalid size in manifest: {0:} (must be bigger than {MINIMUM_SNAPSHOT_SIZE} bytes)")]
+    InvalidSize(u64),
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -26,8 +38,7 @@ pub struct SnapshotData {
     id: i64,
     volume: i64,
     parent: Option<i64>,
-    manifest: Vec<u8>,
-    signature: Vec<u8>,
+    manifest: ManifestSigned,
     hash: Vec<u8>,
 }
 
@@ -62,8 +73,8 @@ impl SnapshotData {
             id,
             volume,
             parent,
-            manifest,
-            signature,
+            manifest: ManifestSigned::from_parts(&manifest, &signature)
+                .map_err(|e| SnapshotError::ManifestDecode(e.to_string()))?,
             hash,
         })
     }
@@ -72,12 +83,16 @@ impl SnapshotData {
         Snapshot(self.id)
     }
 
-    pub fn manifest(&self) -> &[u8] {
+    pub fn manifest_signed(&self) -> &ManifestSigned {
         &self.manifest
     }
 
+    pub fn manifest(&self) -> &Manifest {
+        &self.manifest.manifest
+    }
+
     pub fn signature(&self) -> &[u8] {
-        &self.signature
+        &self.manifest.signature
     }
 
     pub fn hash(&self) -> Hash {
@@ -134,10 +149,26 @@ impl Snapshot {
         let hash = Manifest::hash(manifest);
         let parent = match &parsed.parent {
             Some(parent) if parent.volume.is_none() => {
-                let snapshot = Snapshot::fetch_by_hash(conn, &volume.volume(), &parent.hash)
+                let parent = Snapshot::fetch_by_hash(conn, &volume.volume(), &parent.hash)
                     .await?
                     .ok_or_else(|| SnapshotError::MissingParent(parent.hash))?;
-                Some(snapshot.snapshot())
+                let expected_size_total = parent.manifest().size_total + parsed.size;
+                if parsed.size_total != expected_size_total {
+                    return Err(SnapshotError::WrongSizeTotal(
+                        parsed.size_total,
+                        expected_size_total,
+                    ));
+                }
+                if parsed.generation >= parent.manifest().generation {
+                    return Err(SnapshotError::InvalidGeneration(
+                        parsed.generation,
+                        parent.manifest().generation,
+                    ));
+                }
+                if parsed.size < MINIMUM_SNAPSHOT_SIZE {
+                    return Err(SnapshotError::InvalidSize(parsed.size));
+                }
+                Some(parent.snapshot())
             }
             Some(_parent) => None,
             None => None,

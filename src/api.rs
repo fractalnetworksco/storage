@@ -143,8 +143,7 @@ async fn volume_snapshot_get(
     let snapshot = Snapshot::fetch_by_hash(&mut conn, &volume.volume(), &snapshot)
         .await?
         .ok_or(StorageError::SnapshotNotFound)?;
-    let mut manifest = snapshot.manifest().to_vec();
-    manifest.extend_from_slice(snapshot.signature());
+    let manifest = snapshot.manifest_signed().data();
     Ok(manifest)
 }
 
