@@ -1,5 +1,5 @@
 [package]
-name = "storage-api"
+name = "fractal-storage-client"
 version = "0.1.0"
 edition = "2021"
 
@@ -41,9 +41,3 @@ default = ["hex", "base64"]
 [dev-dependencies]
 serde_test = "1.0.137"
 tokio = { version = "1.19.2", features = ["full"] }
-
-[workspace]
-members = [".", "tool"]
-
-[patch.crates-io]
-common-multipart-rfc7578 = { git = "https://github.com/xfbs/rust-multipart-rfc7578" }

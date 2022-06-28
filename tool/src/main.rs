@@ -7,7 +7,7 @@ use reqwest::ClientBuilder;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str::FromStr;
-use storage_api::{keys::*, *};
+use fractal_storage_client::{keys::*, *};
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
@@ -186,12 +186,12 @@ impl Options {
                     privkey
                 });
                 let token = self.token();
-                storage_api::volume_create(&self.server(), &client, &token, &privkey).await?;
+                fractal_storage_client::volume_create(&self.server(), &client, &token, &privkey).await?;
                 println!("pubkey {}", privkey.pubkey());
                 Ok(())
             }
             Command::SnapshotList(opts) => {
-                let result = storage_api::snapshot_list(
+                let result = fractal_storage_client::snapshot_list(
                     &self.server(),
                     &client,
                     &self.token(),
@@ -204,7 +204,7 @@ impl Options {
                 Ok(())
             }
             Command::SnapshotFetch(opts) => {
-                let result = storage_api::snapshot_fetch(
+                let result = fractal_storage_client::snapshot_fetch(
                     &self.server(),
                     &client,
                     &self.token(),
@@ -230,7 +230,7 @@ impl Options {
                     .secret
                     .or_else(|| opts.privkey.map(|k| k.derive_secret()))
                     .unwrap();
-                let cid = storage_api::upload_encrypt(&ipfs, &secret, input).await?;
+                let cid = fractal_storage_client::upload_encrypt(&ipfs, &secret, input).await?;
                 println!("{cid}");
                 Ok(())
             }
@@ -240,7 +240,7 @@ impl Options {
                     .secret
                     .or_else(|| opts.privkey.map(|k| k.derive_secret()))
                     .unwrap();
-                let mut data = storage_api::fetch_decrypt(&ipfs, &secret, &opts.cid).await?;
+                let mut data = fractal_storage_client::fetch_decrypt(&ipfs, &secret, &opts.cid).await?;
                 let mut stdout = tokio::io::stdout();
 
                 loop {

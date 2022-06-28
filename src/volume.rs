@@ -1,8 +1,8 @@
 use crate::snapshot::{SnapshotData, SnapshotError};
+use fractal_storage_client::{Pubkey, SnapshotInfo};
 use sqlx::any::AnyRow;
 use sqlx::{query, AnyConnection, Row};
 use std::str::FromStr;
-use storage_api::{Pubkey, SnapshotInfo};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -24,7 +24,7 @@ pub enum VolumeError {
     #[error("Error parsing UUID: {0:}")]
     ParseUuid(#[from] uuid::Error),
     #[error("Error parsing key: {0:}")]
-    ParseKey(#[from] storage_api::keys::ParseError),
+    ParseKey(#[from] fractal_storage_client::keys::ParseError),
 }
 
 impl VolumeData {
@@ -159,7 +159,7 @@ impl Volume {
 #[tokio::test]
 async fn test_volume() {
     use sqlx::AnyPool;
-    use storage_api::Privkey;
+    use fractal_storage_client::Privkey;
 
     let pool = AnyPool::connect("sqlite://:memory:").await.unwrap();
     sqlx::migrate!().run(&pool).await.unwrap();

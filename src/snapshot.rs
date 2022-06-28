@@ -1,9 +1,9 @@
 use crate::volume::{Volume, VolumeData};
 use async_trait::async_trait;
+use fractal_storage_client::{Hash, Manifest, ManifestSigned};
 use serde::{Deserialize, Serialize};
 use sqlx::any::AnyRow;
 use sqlx::{query, AnyConnection, Row};
-use storage_api::{Hash, Manifest, ManifestSigned};
 use thiserror::Error;
 
 /// Minimum accepted size for BTRFS snapshot. Experientally determined, used as safeguard
@@ -249,7 +249,7 @@ impl Snapshot {
 #[tokio::test]
 async fn test_snapshot_create() {
     use sqlx::AnyPool;
-    use storage_api::Privkey;
+    use fractal_storage_client::Privkey;
     use uuid::Uuid;
 
     // create and connect database

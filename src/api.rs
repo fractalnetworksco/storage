@@ -1,6 +1,7 @@
 use crate::snapshot::{Snapshot, SnapshotError};
 use crate::volume::{Volume, VolumeError};
 use fractal_auth_client::UserContext;
+use fractal_storage_client::{Hash, Pubkey};
 use rocket::response::Redirect;
 use rocket::{
     http::Status,
@@ -11,7 +12,6 @@ use rocket::{
 };
 use sqlx::AnyPool;
 use std::io::Cursor;
-use storage_api::{Hash, Pubkey};
 use thiserror::Error;
 use uuid::Uuid;
 

@@ -206,6 +206,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4cbbc9d0964165b47557570cce6c952866c2678457aca742aafc9fb771d30270"
 
 [[package]]
+name = "base32"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23ce669cd6c8588f79e15cf450314f9638f967fc5770ff1c7c1deb0925ea7cfa"
+
+[[package]]
 name = "base64"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -401,8 +407,7 @@ dependencies = [
 [[package]]
 name = "common-multipart-rfc7578"
 version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22328b3864f1d8dbe7036f3f2fdfdcb1f367af43dca418943d396fbf8c4b8021"
+source = "git+https://github.com/xfbs/rust-multipart-rfc7578#6959435fbad02cb9fcbe6716d8f60a75866a39ae"
 dependencies = [
  "bytes",
  "futures-core",
@@ -715,6 +720,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
+dependencies = [
+ "atty",
+ "humantime",
+ "log",
+ "regex",
+ "termcolor",
+]
+
+[[package]]
 name = "event-listener"
 version = "2.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -809,8 +827,9 @@ dependencies = [
  "async-trait",
  "base64 0.13.0",
  "byteorder",
- "env_logger",
+ "env_logger 0.8.4",
  "fractal-auth-client",
+ "fractal-storage-client",
  "hex",
  "log",
  "rand",
@@ -819,12 +838,48 @@ dependencies = [
  "rust-s3",
  "serde",
  "sqlx",
- "storage-api",
  "structopt",
  "thiserror",
  "tokio",
  "url",
  "uuid 1.1.2",
+]
+
+[[package]]
+name = "fractal-storage-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "base32",
+ "base64 0.13.0",
+ "bincode",
+ "blake2",
+ "byteorder",
+ "bytes",
+ "chacha20",
+ "cid",
+ "ed25519-dalek-fiat",
+ "futures",
+ "hex",
+ "ipfs-api",
+ "ipfs-api-backend-hyper",
+ "log",
+ "paste",
+ "rand_core",
+ "reqwest",
+ "rocket",
+ "serde",
+ "serde-big-array 0.4.1",
+ "serde_test",
+ "sha2 0.10.2",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util 0.7.3",
+ "url",
+ "uuid 1.1.2",
+ "zeroize",
 ]
 
 [[package]]
@@ -2406,6 +2461,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_test"
+version = "1.0.137"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe196827aea34242c314d2f0dd49ed00a129225e80dda71b0dbf65d54d25628d"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2654,39 +2718,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "storage-api"
+name = "storage-tool"
 version = "0.1.0"
-source = "git+https://gitlab.com/fractalnetworks/storage-api?branch=ipfs#868d23fa56d82f072e4702fd700623831fc408e9"
 dependencies = [
  "anyhow",
- "async-trait",
- "base64 0.13.0",
- "bincode",
- "blake2",
- "byteorder",
- "bytes",
- "chacha20",
  "cid",
- "ed25519-dalek-fiat",
+ "env_logger 0.9.0",
+ "fractal-storage-client",
  "futures",
- "hex",
  "ipfs-api",
  "ipfs-api-backend-hyper",
- "log",
- "paste",
- "rand_core",
  "reqwest",
- "rocket",
- "serde",
- "serde-big-array 0.4.1",
- "sha2 0.10.2",
- "thiserror",
+ "serde_json",
+ "structopt",
  "tokio",
- "tokio-stream",
- "tokio-util 0.7.3",
+ "tokio-util 0.6.10",
  "url",
- "uuid 1.1.2",
- "zeroize",
 ]
 
 [[package]]
@@ -2875,6 +2922,7 @@ dependencies = [
  "mio",
  "num_cpus",
  "once_cell",
+ "parking_lot 0.12.1",
  "pin-project-lite",
  "signal-hook-registry",
  "socket2",

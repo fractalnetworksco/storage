@@ -11,7 +11,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
-use storage_api::*;
+use fractal_storage_client::*;
 use url::Url;
 use uuid::Uuid;
 
