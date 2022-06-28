@@ -1,6 +1,7 @@
 use crate::volume::Volume;
 use crate::Options;
 use anyhow::Result;
+use fractal_storage_client::*;
 use rand::{thread_rng, Rng};
 use reqwest::Client;
 use reqwest::StatusCode;
@@ -11,7 +12,6 @@ use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
-use fractal_storage_client::*;
 use url::Url;
 use uuid::Uuid;
 

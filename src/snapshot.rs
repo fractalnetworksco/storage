@@ -248,8 +248,8 @@ impl Snapshot {
 
 #[tokio::test]
 async fn test_snapshot_create() {
-    use sqlx::AnyPool;
     use fractal_storage_client::Privkey;
+    use sqlx::AnyPool;
     use uuid::Uuid;
 
     // create and connect database

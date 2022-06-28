@@ -1,13 +1,13 @@
 use anyhow::anyhow;
 use anyhow::Result;
 use cid::Cid;
+use fractal_storage_client::{keys::*, *};
 use futures::StreamExt;
 use ipfs_api::{IpfsClient, TryFromUri};
 use reqwest::ClientBuilder;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::str::FromStr;
-use fractal_storage_client::{keys::*, *};
 use structopt::StructOpt;
 use tokio::fs::File;
 use tokio::io::stdin;
@@ -186,7 +186,8 @@ impl Options {
                     privkey
                 });
                 let token = self.token();
-                fractal_storage_client::volume_create(&self.server(), &client, &token, &privkey).await?;
+                fractal_storage_client::volume_create(&self.server(), &client, &token, &privkey)
+                    .await?;
                 println!("pubkey {}", privkey.pubkey());
                 Ok(())
             }
@@ -240,7 +241,8 @@ impl Options {
                     .secret
                     .or_else(|| opts.privkey.map(|k| k.derive_secret()))
                     .unwrap();
-                let mut data = fractal_storage_client::fetch_decrypt(&ipfs, &secret, &opts.cid).await?;
+                let mut data =
+                    fractal_storage_client::fetch_decrypt(&ipfs, &secret, &opts.cid).await?;
                 let mut stdout = tokio::io::stdout();
 
                 loop {

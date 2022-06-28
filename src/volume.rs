@@ -158,8 +158,8 @@ impl Volume {
 
 #[tokio::test]
 async fn test_volume() {
-    use sqlx::AnyPool;
     use fractal_storage_client::Privkey;
+    use sqlx::AnyPool;
 
     let pool = AnyPool::connect("sqlite://:memory:").await.unwrap();
     sqlx::migrate!().run(&pool).await.unwrap();
