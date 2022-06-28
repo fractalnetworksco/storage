@@ -1,0 +1,116 @@
+# make sure CI pulls submodules
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+# set up cache to speed up builds
+cache:
+  key: $CI_COMMIT_REF_SLUG
+  paths:
+    - .cargo/
+    - .cache/sccache
+
+before_script:
+  - export CARGO_HOME="${PWD}/.cargo"
+  - export SCCACHE_DIR="${PWD}/.cache/sccache"
+
+stages:
+  - test
+  - build
+  - deploy
+
+# make sure that formatting is correct.
+rustfmt:
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
+  stage: test
+  allow_failure: true
+  script:
+    - cargo fmt -- --check
+
+# make sure there are no issues with the code.
+clippy:
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
+  stage: test
+  allow_failure: true
+  script:
+    - cargo clippy
+
+# run unit tests.
+test:
+  services:
+    - name: ipfs/go-ipfs
+      alias: ipfs
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
+  stage: test
+  variables:
+    IPFS_API: http://ipfs:5001
+  script:
+    - cargo test -- --include-ignored
+
+# generate release build
+build:amd64:
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
+  stage: build
+  script:
+    - cargo build --workspace --release
+  artifacts:
+    paths:
+      - target/release/storage-tool
+    expire_in: 1 week
+
+# build for arm target
+build:arm32:
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable-arm32:v1
+  stage: build
+  script:
+    - cargo build --release --target arm-unknown-linux-gnueabihf --workspace
+  artifacts:
+    paths:
+      - target/arm-unknown-linux-gnueabihf/release/storage-tool
+    expire_in: 1 week
+
+# build for arm target
+build:arm64:
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable-arm64:v1
+  stage: build
+  script:
+    - cargo build --release --target aarch64-unknown-linux-gnu --workspace
+  artifacts:
+    paths:
+      - target/aarch64-unknown-linux-gnu/release/storage-tool
+    expire_in: 1 week
+
+# generate rust html documentation
+rustdoc:
+  image: registry.gitlab.com/fractalnetworks/images/rust-stable:v1
+  stage: build
+  script:
+    - cargo doc --all-features
+  artifacts:
+    paths:
+      - target/doc
+    expire_in: 1 week
+
+# publish binary, docs and API docs to gitlab pages.
+pages:
+  image: registry.gitlab.com/fractalnetworks/images/pages
+  stage: deploy
+  dependencies:
+    - build:amd64
+    - build:arm64
+    - build:arm32
+    - rustdoc
+  script:
+    - mkdir public
+    - mv target/doc public/doc
+    - mv target/release/storage-tool public/storage-tool-master-amd64
+    - sign public/storage-client-master-amd64
+    - mv target/arm-unknown-linux-gnueabihf/release/storage-tool public/storage-tool-master-arm32
+    - sign public/storage-client-master-arm32
+    - mv target/aarch64-unknown-linux-gnu/release/storage-tool public/storage-tool-master-arm64
+    - sign public/storage-client-master-arm64
+  artifacts:
+    paths:
+      - public
+    expire_in: 1 week
+  only:
+    - master
