@@ -5,6 +5,19 @@ encrypted and signed blob storage with metadata. Currently, the metadata is
 stored inside of an SQLite database, and the data on disk, however in the
 future this will support different backends (S3-compatible, filecoin, etc).
 
+Building Locally
+
+Insall deps
+```
+sudo apt install libssl-dev pkg-config
+```
+Build
+```
+cargo build --release
+```
+
+
+
 Builds:
 - [storage-master-amd64][] ([signature][storage-master-amd64.sig])
 - [storage-master-arm64][] ([signature][storage-master-arm64.sig])
