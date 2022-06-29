@@ -1,4 +1,4 @@
-use bytes::{Buf, BufMut, Bytes, BytesMut};
+use bytes::Bytes;
 use futures::task::Context;
 use futures::task::Poll;
 use futures::Stream;

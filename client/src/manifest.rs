@@ -1,10 +1,11 @@
 use crate::keys::{Privkey, Pubkey, Secret};
 use crate::Hash;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use ed25519_dalek_fiat::{ExpandedSecretKey, PublicKey, SecretKey, Signature, Verifier};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha512};
 use std::path::PathBuf;
+#[cfg(test)]
 use std::str::FromStr;
 use url::Url;
 use uuid::Uuid;

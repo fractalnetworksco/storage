@@ -199,7 +199,6 @@ async fn encrypt_empty_stream() {
 #[cfg(test)]
 #[tokio::test]
 async fn encrypt_single_stream() {
-    env_logger::init();
     use futures::StreamExt;
     let key = Key::from_slice(b"abcdefghijklmnopqrstuvwxyz012345");
     let stream = futures::stream::iter(vec![Ok(Bytes::copy_from_slice(b"hello"))]);

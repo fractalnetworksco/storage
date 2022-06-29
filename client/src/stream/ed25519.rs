@@ -122,13 +122,6 @@ impl<E: StdError> Display for VerifyError<E> {
 
 impl<E: StdError> StdError for VerifyError<E> {}
 
-pub enum VerifyStreamState {
-    Start(Sha512, BytesMut),
-    Valid,
-    Invalid,
-    Error,
-}
-
 impl<E: StdError> VerifyStream<E> {
     /// Create a new VerifyStream instance from an existing public key and stream.
     pub fn new<S: Stream<Item = Result<Bytes, E>> + Send + Sync + 'static>(
