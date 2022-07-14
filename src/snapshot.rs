@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::any::AnyRow;
 use sqlx::{query, AnyConnection, Row};
 use thiserror::Error;
+use uuid::Uuid;
 
 /// Minimum accepted size for BTRFS snapshot. Experientally determined, used as safeguard
 /// to prevent broken snapshots from being accepted.
@@ -16,6 +17,8 @@ pub enum SnapshotError {
     ManifestInvalid,
     #[error("Database error: {0:}")]
     Database(#[from] sqlx::Error),
+    #[error("Error managing volume: {0:}")]
+    VolumeError(#[from] crate::volume::VolumeError),
     #[error("Missing rowid")]
     MissingRowid,
     #[error("Wrong size_total, expected {0:} but got {1:}")]
@@ -28,6 +31,10 @@ pub enum SnapshotError {
     InvalidGeneration(u64, u64),
     #[error("Invalid size in manifest: {0:} (must be bigger than {MINIMUM_SNAPSHOT_SIZE} bytes)")]
     InvalidSize(u64),
+    #[error("Invalid writer, should be {0:}")]
+    InvalidWriter(Uuid),
+    #[error("Volume is locked")]
+    VolumeLocked,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -147,6 +154,20 @@ impl Snapshot {
         Manifest::validate(manifest, signature, volume.pubkey()).unwrap();
         let parsed = Manifest::decode(manifest).map_err(|_| SnapshotError::ManifestInvalid)?;
         let hash = Manifest::hash(manifest);
+
+        // make sure the volume isn't currently locked
+        if volume.locked() {
+            return Err(SnapshotError::VolumeLocked);
+        }
+
+        // make sure the right writer is writing
+        if let Some(writer) = volume.writer() {
+            if writer != &parsed.machine {
+                return Err(SnapshotError::InvalidWriter(parsed.machine.clone()));
+            }
+        }
+
+        // validate parent
         let parent = match &parsed.parent {
             Some(parent) if parent.volume.is_none() => {
                 let parent = Snapshot::fetch_by_hash(conn, &volume.volume(), &parent.hash)
@@ -192,6 +213,11 @@ impl Snapshot {
             parsed.generation,
         )
         .await?;
+
+        volume
+            .volume()
+            .writer_set(conn, Some(&parsed.machine))
+            .await?;
 
         Ok(snapshot)
     }

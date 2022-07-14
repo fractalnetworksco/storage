@@ -1,5 +1,6 @@
 use crate::snapshot::{SnapshotData, SnapshotError};
-use fractal_storage_client::{Pubkey, SnapshotInfo};
+use fractal_storage_client::{Pubkey, SnapshotInfo, VolumeEdit};
+use optional_field::Field;
 use sqlx::any::AnyRow;
 use sqlx::{query, AnyConnection, Row};
 use std::str::FromStr;
@@ -13,6 +14,8 @@ pub struct VolumeData {
     id: i64,
     pubkey: Pubkey,
     account: Uuid,
+    writer: Option<Uuid>,
+    locked: bool,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -33,10 +36,14 @@ impl VolumeData {
         let key: &[u8] = row.try_get("volume_pubkey")?;
         let account: &str = row.try_get("account_id")?;
         let account = Uuid::from_str(account)?;
+        let writer: Option<&str> = row.try_get("volume_writer")?;
+        let writer = writer.map(|w| Uuid::from_str(w)).transpose()?;
         Ok(VolumeData {
             id,
             pubkey: Pubkey::try_from(key)?,
             account,
+            writer,
+            locked: row.try_get("volume_locked")?,
         })
     }
 
@@ -62,6 +69,14 @@ impl VolumeData {
 
     pub fn account(&self) -> &Uuid {
         &self.account
+    }
+
+    pub fn writer(&self) -> Option<&Uuid> {
+        self.writer.as_ref()
+    }
+
+    pub fn locked(&self) -> bool {
+        self.locked
     }
 
     pub async fn register(
@@ -106,6 +121,29 @@ impl VolumeData {
             Some(row) => Ok(Some(SnapshotData::from_row(&row)?)),
             None => Ok(None),
         }
+    }
+
+    pub async fn edit(
+        &self,
+        conn: &mut AnyConnection,
+        edit: &VolumeEdit,
+    ) -> Result<(), VolumeError> {
+        if let Field::Present(value) = &edit.writer {
+            if &self.writer != value {
+                self.volume().writer_set(conn, value.as_ref()).await?;
+            }
+        }
+        if let Some(value) = &edit.account {
+            if &self.account != value {
+                self.volume().account_set(conn, &value).await?;
+            }
+        }
+        if let Some(value) = &edit.lock {
+            if &self.locked != value {
+                self.volume().locked_set(conn, *value).await?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -153,6 +191,45 @@ impl Volume {
 
     pub fn id(&self) -> i64 {
         self.0
+    }
+
+    pub async fn writer_set(
+        &self,
+        conn: &mut AnyConnection,
+        writer: Option<&Uuid>,
+    ) -> Result<(), VolumeError> {
+        query("UPDATE storage_volume SET volume_writer = ? WHERE volume_id = ?")
+            .bind(writer.map(|w| w.to_string()))
+            .bind(self.0)
+            .execute(conn)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn account_set(
+        &self,
+        conn: &mut AnyConnection,
+        account: &Uuid,
+    ) -> Result<(), VolumeError> {
+        query("UPDATE storage_volume SET account_id = ? WHERE volume_id = ?")
+            .bind(account.to_string())
+            .bind(self.0)
+            .execute(conn)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn locked_set(
+        &self,
+        conn: &mut AnyConnection,
+        locked: bool,
+    ) -> Result<(), VolumeError> {
+        query("UPDATE storage_volume SET volume_locked = ? WHERE volume_id = ?")
+            .bind(locked)
+            .bind(self.0)
+            .execute(conn)
+            .await?;
+        Ok(())
     }
 }
 

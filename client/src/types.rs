@@ -4,10 +4,12 @@ use bytes::{Bytes, BytesMut};
 use futures::stream::Stream;
 use futures::task::Context;
 use futures::task::Poll;
+use optional_field::Field;
 use serde::{Deserialize, Serialize};
 use std::error::Error as StdError;
 use std::io::Cursor;
 use std::pin::Pin;
+use uuid::Uuid;
 
 pub const SNAPSHOT_HEADER_SIZE: usize = 3 * 8;
 
@@ -161,6 +163,23 @@ impl<E: StdError> Stream for HeaderStream<E> {
             _ => unreachable!(),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct VolumeEdit {
+    /// Which plugin UUID is allowed to write snapshots for this volume.
+    ///
+    /// When missing, it doesn't change anything. When `None`, it removes the
+    /// write field, meaning that anyone can write to it. When a UUID, that is the
+    /// new exclusive writer.
+    #[serde(default)]
+    pub writer: Field<Uuid>,
+    /// When set, transfers ownership of this volume to another account.
+    #[serde(default)]
+    pub account: Option<Uuid>,
+    /// Set this volume locked, this prevents pushing of new snapshots.
+    #[serde(default)]
+    pub lock: Option<bool>,
 }
 
 #[cfg(test)]
