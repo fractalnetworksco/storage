@@ -250,6 +250,64 @@ async fn can_snapshot_upload() {
 }
 
 #[tokio::test]
+async fn can_snapshot_upload_reject_writer() {
+    with_service(|url| async move {
+        let volume = Privkey::generate();
+        let client = Client::new();
+        let token = Uuid::new_v4();
+        let machine = Uuid::new_v4();
+        volume_create(&url, &client, &token.to_string(), &volume).await?;
+        let manifest = Manifest {
+            generation: 0,
+            path: PathBuf::from_str("/tmp/path").unwrap(),
+            creation: 0,
+            machine,
+            size: 10,
+            size_total: 10,
+            parent: None,
+            data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
+                .try_into()
+                .unwrap(),
+        };
+        let manifest = manifest.sign(&volume);
+        snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await?;
+        let new_machine = Uuid::new_v4();
+        let manifest = Manifest {
+            generation: 1,
+            path: PathBuf::from_str("/tmp/path").unwrap(),
+            creation: 0,
+            machine: new_machine,
+            size: 10,
+            size_total: 20,
+            parent: None,
+            data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
+                .try_into()
+                .unwrap(),
+        };
+        let manifest = manifest.sign(&volume);
+        let result = snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await;
+        assert!(result.is_err());
+        Ok(())
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
 async fn can_snapshot_fetch() {
     with_service(|url| async move {
         let volume = Privkey::generate();
