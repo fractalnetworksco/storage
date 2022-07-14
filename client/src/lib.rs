@@ -94,6 +94,27 @@ pub async fn volume_create(
     Ok(())
 }
 
+/// Edit a volume's properties.
+pub async fn volume_edit(
+    api: &Url,
+    client: &Client,
+    token: &str,
+    volume: &Privkey,
+    edit: &VolumeEdit,
+) -> Result<(), Error> {
+    let url = api.join(&format!("/api/v1/volume/{}", &volume.pubkey().to_hex()))?;
+    let response = client
+        .patch(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .json(&edit)
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        return Err(Error::Unsuccessful(response.status()));
+    }
+    Ok(())
+}
+
 /// Remove volume.
 pub async fn volume_remove(
     api: &Url,
