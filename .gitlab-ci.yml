@@ -98,7 +98,7 @@ rustdoc:
   stage: build
   script:
     - source ci-setup-cargo
-    - cargo doc --no-deps
+    - cargo doc --all --no-deps
   artifacts:
     paths:
       - target/doc
