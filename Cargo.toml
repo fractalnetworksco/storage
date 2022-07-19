@@ -15,7 +15,7 @@ log = "0.4.14"
 byteorder = "1.4.3"
 fractal-storage-client = { path = "./client", features = ["rocket"] }
 rust-s3 = { version = "0.28.0", default-features = false, features = ["tokio-rustls-tls", "tags"], optional = true }
-fractal-auth-client = { git = "https://gitlab.com/fractalnetworks/fractal-auth-client", branch = "v0.1", features = ["rocket"] }
+fractal-auth-client = { git = "https://gitlab.com/fractalnetworks/libraries/auth-client", features = ["rocket", "static-tokens"] }
 url = "2.2.2"
 thiserror = "1.0.31"
 uuid = { version = "1.0.0", features = ["v4"] }
