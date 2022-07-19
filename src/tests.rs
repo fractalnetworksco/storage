@@ -150,6 +150,8 @@ fn options_default(listen: SocketAddr) -> Options {
         jwks: None,
         insecure_auth_stub: true,
         listen,
+        static_system: vec![],
+        static_user: vec![],
     }
 }
 
@@ -192,7 +194,7 @@ async fn can_volume_create() {
         let client = Client::new();
         let token = Uuid::new_v4();
         volume_create(&url, &client, &token.to_string(), &privkey).await?;
-        let info = volume_get(&url, &client, &token.to_string(), &privkey.pubkey()).await?;
+        let _info = volume_get(&url, &client, &token.to_string(), &privkey.pubkey()).await?;
         Ok(())
     })
     .await

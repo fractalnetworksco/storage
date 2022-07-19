@@ -88,7 +88,7 @@ impl Options {
         let config = Config::figment()
             .merge(("port", self.listen.port()))
             .merge(("address", self.listen.ip()));
-        rocket::custom(config)
+        let _rocket = rocket::custom(config)
             .mount("/api/v1/", api::routes())
             .mount("/", api::health())
             .manage(pool)

@@ -72,7 +72,7 @@ async fn volume_create(
 
 #[get("/volume/<volume>")]
 async fn volume_get(
-    context: UserContext,
+    _context: UserContext,
     pool: &State<AnyPool>,
     volume: Pubkey,
 ) -> Result<Json<VolumeInfo>, StorageError> {
@@ -105,7 +105,7 @@ async fn volume_delete(
 
 #[patch("/volume/<volume>", data = "<edit>")]
 async fn volume_edit(
-    context: UserContext,
+    _context: UserContext,
     pool: &State<AnyPool>,
     volume: Pubkey,
     edit: Json<VolumeEdit>,

@@ -100,7 +100,7 @@ pub async fn volume_get(
     client: &Client,
     token: &str,
     volume: &Pubkey,
-) -> Result<(), Error> {
+) -> Result<VolumeInfo, Error> {
     let url = api.join(&format!("/api/v1/volume/{}", &volume.to_hex()))?;
     let response = client
         .get(url)
