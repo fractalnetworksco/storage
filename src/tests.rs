@@ -192,6 +192,7 @@ async fn can_volume_create() {
         let client = Client::new();
         let token = Uuid::new_v4();
         volume_create(&url, &client, &token.to_string(), &privkey).await?;
+        let info = volume_get(&url, &client, &token.to_string(), &privkey.pubkey()).await?;
         Ok(())
     })
     .await

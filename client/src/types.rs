@@ -31,6 +31,12 @@ pub struct SnapshotInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct VolumeInfo {
+    pub writer: Option<Uuid>,
+    pub account: Uuid,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct SnapshotHeader {
     pub generation: u64,
     pub parent: Option<u64>,

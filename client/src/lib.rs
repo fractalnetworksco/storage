@@ -94,6 +94,25 @@ pub async fn volume_create(
     Ok(())
 }
 
+/// Get volume's info.
+pub async fn volume_get(
+    api: &Url,
+    client: &Client,
+    token: &str,
+    volume: &Pubkey,
+) -> Result<(), Error> {
+    let url = api.join(&format!("/api/v1/volume/{}", &volume.to_hex()))?;
+    let response = client
+        .get(url)
+        .header("Authorization", format!("Bearer {token}"))
+        .send()
+        .await?;
+    if !response.status().is_success() {
+        return Err(Error::Unsuccessful(response.status()));
+    }
+    Ok(response.json().await?)
+}
+
 /// Edit a volume's properties.
 pub async fn volume_edit(
     api: &Url,

@@ -1,7 +1,7 @@
 use crate::snapshot::{Snapshot, SnapshotError};
 use crate::volume::{Volume, VolumeError};
 use fractal_auth_client::UserContext;
-use fractal_storage_client::{Hash, Pubkey, VolumeEdit};
+use fractal_storage_client::{Hash, Pubkey, VolumeEdit, VolumeInfo};
 use rocket::response::Redirect;
 use rocket::{
     http::Status,
@@ -68,6 +68,22 @@ async fn volume_create(
     let account = Uuid::parse_str(&context.account().to_string()).unwrap();
     Volume::create(&mut conn, &volume, &account).await?;
     Ok(())
+}
+
+#[get("/volume/<volume>")]
+async fn volume_get(
+    context: UserContext,
+    pool: &State<AnyPool>,
+    volume: Pubkey,
+) -> Result<Json<VolumeInfo>, StorageError> {
+    let mut conn = pool.acquire().await?;
+    let volume = Volume::lookup(&mut conn, &volume)
+        .await?
+        .ok_or(StorageError::VolumeNotFound)?;
+    Ok(Json(VolumeInfo {
+        account: volume.account().clone(),
+        writer: volume.writer().cloned(),
+    }))
 }
 
 #[delete("/volume/<volume>")]
@@ -170,6 +186,7 @@ async fn health_check() -> Result<(), String> {
 pub fn routes() -> Vec<Route> {
     routes![
         volume_create,
+        volume_get,
         volume_edit,
         volume_delete,
         volume_snapshot_upload,
