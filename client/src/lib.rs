@@ -181,13 +181,13 @@ pub async fn snapshot_fetch(
     api: &Url,
     client: &Client,
     token: &str,
-    volume: &Privkey,
+    volume: &Pubkey,
     snapshot: &Hash,
 ) -> Result<ManifestSigned, Error> {
     let url = api
         .join(&format!(
             "/api/v1/volume/{}/{}",
-            &volume.pubkey().to_hex(),
+            &volume.to_hex(),
             &snapshot.to_hex(),
         ))
         .unwrap();

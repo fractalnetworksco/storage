@@ -339,8 +339,14 @@ async fn can_snapshot_fetch() {
             &manifest,
         )
         .await?;
-        let signed_manifest =
-            snapshot_fetch(&url, &client, &token.to_string(), &volume, &manifest.hash()).await?;
+        let signed_manifest = snapshot_fetch(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest.hash(),
+        )
+        .await?;
         assert_eq!(manifest, signed_manifest);
         Ok(())
     })
@@ -355,14 +361,28 @@ async fn can_snapshot_fetch_missing() {
         let token = Uuid::new_v4();
         let volume = Privkey::generate();
         let snapshot = Hash::generate(&[]);
-        let result = snapshot_fetch(&url, &client, &token.to_string(), &volume, &snapshot).await;
+        let result = snapshot_fetch(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &snapshot,
+        )
+        .await;
         assert!(matches!(
             result,
             Err(Error::Unsuccessful(StatusCode::NOT_FOUND))
         ));
 
         volume_create(&url, &client, &token.to_string(), &volume).await?;
-        let result = snapshot_fetch(&url, &client, &token.to_string(), &volume, &snapshot).await;
+        let result = snapshot_fetch(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &snapshot,
+        )
+        .await;
         assert!(matches!(
             result,
             Err(Error::Unsuccessful(StatusCode::NOT_FOUND))
