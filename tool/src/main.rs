@@ -209,7 +209,7 @@ impl Options {
                     &self.server(),
                     &client,
                     &self.token(),
-                    &opts.privkey,
+                    &opts.privkey.pubkey(),
                     &opts.hash,
                 )
                 .await?;
