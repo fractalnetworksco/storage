@@ -67,7 +67,7 @@ impl<E: StdError> Stream for EncryptionStream<E> {
                     }
                     Poll::Pending => {}
                 }
-                debug!("Sending nonce: {nonce:?}");
+                debug!("Sending nonce");
                 Poll::Ready(Some(Ok(nonce.freeze())))
             }
             Stream => match Pin::new(&mut self.stream).poll_next(cx) {
@@ -82,7 +82,7 @@ impl<E: StdError> Stream for EncryptionStream<E> {
                     done
                 }
                 Poll::Ready(Some(Ok(bytes))) => {
-                    debug!("Read bytes: {bytes:?}");
+                    debug!("Read {} bytes", bytes.len());
                     let mut bytes = bytes.as_ref().to_vec();
                     self.crypt.apply_keystream(&mut bytes);
                     Poll::Ready(Some(Ok(Bytes::copy_from_slice(&bytes))))
@@ -124,18 +124,17 @@ impl<E: StdError> Stream for DecryptionStream<E> {
         match &mut self.state {
             Start(key, nonce) => match result {
                 Poll::Ready(Some(Ok(mut bytes))) => {
-                    debug!("Read raw data: {bytes:?}");
+                    debug!("Read {} bytes raw data", bytes.len());
                     let nonce_data = bytes.split_to((24 - nonce.len()).min(bytes.len()));
-                    debug!("Putting nonce data: {nonce_data:?}");
+                    debug!("Putting nonce data");
                     nonce.put(nonce_data);
                     if nonce.len() == 24 {
-                        debug!("Got nonce {nonce:?}");
+                        debug!("Got nonce");
                         let nonce = XNonce::from_slice(&nonce);
                         let mut crypter = XChaCha20::new(&key, &nonce);
                         let mut bytes: BytesMut = bytes.chunk().into();
-                        debug!("Decrypting {bytes:?}");
+                        debug!("Decrypting {} bytes", bytes.len());
                         crypter.apply_keystream(&mut bytes);
-                        debug!("Decrypted {bytes:?}");
                         self.state = DecryptionStreamState::Stream(crypter);
                         Poll::Ready(Some(Ok(bytes.freeze())))
                     } else {
@@ -154,11 +153,9 @@ impl<E: StdError> Stream for DecryptionStream<E> {
             },
             Stream(xchacha) => match result {
                 Poll::Ready(Some(Ok(bytes))) => {
-                    debug!("Read raw data: {bytes:?}");
+                    debug!("Read {} bytes raw data", bytes.len());
                     let mut bytes: BytesMut = bytes.chunk().into();
-                    debug!("Decrypting: {bytes:?}");
                     xchacha.apply_keystream(&mut bytes);
-                    debug!("Decrypted: {bytes:?}");
                     Poll::Ready(Some(Ok(bytes.freeze())))
                 }
                 error @ Poll::Ready(Some(Err(_))) => {
