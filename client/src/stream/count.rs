@@ -2,7 +2,6 @@ use bytes::Bytes;
 use futures::task::Context;
 use futures::task::Poll;
 use futures::Stream;
-use log::debug;
 use std::error::Error as StdError;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -64,7 +63,6 @@ impl<E: StdError> Stream for CountBytesStream<E> {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let result = Pin::new(&mut self.stream).poll_next(cx);
-        debug!("Got: {result:?}");
         match &result {
             Poll::Ready(Some(Ok(bytes))) => {
                 self.count.add(bytes.len());
