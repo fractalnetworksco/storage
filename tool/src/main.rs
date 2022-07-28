@@ -106,6 +106,8 @@ pub struct SnapshotListCommand {
     parent: Option<Hash>,
     #[structopt(long, short)]
     root: bool,
+    #[structopt(long, short)]
+    fetch: bool,
 }
 
 #[derive(StructOpt, Debug, Clone)]
@@ -201,7 +203,21 @@ impl Options {
                     opts.root,
                 )
                 .await?;
-                println!("{:#?}", result);
+                for hash in &result {
+                    if opts.fetch {
+                        let result = fractal_storage_client::snapshot_fetch(
+                            &self.server(),
+                            &client,
+                            &self.token(),
+                            &opts.privkey.pubkey(),
+                            &hash,
+                        )
+                        .await?;
+                        println!("{}", serde_json::to_string(&result)?);
+                    } else {
+                        println!("{hash}");
+                    }
+                }
                 Ok(())
             }
             Command::SnapshotFetch(opts) => {
@@ -213,7 +229,7 @@ impl Options {
                     &opts.hash,
                 )
                 .await?;
-                println!("{:#?}", result);
+                println!("{}", serde_json::to_string(&result)?);
                 Ok(())
             }
             Command::IpfsUpload(opts) => {
