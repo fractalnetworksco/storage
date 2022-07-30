@@ -129,6 +129,19 @@ async fn volume_snapshot_upload(
     let volume = Volume::lookup(&mut conn, &volume)
         .await?
         .ok_or(StorageError::VolumeNotFound)?;
+    let manifest_signed = ManifestSigned::parse(&data)?;
+    match Snapshot::fetch_by_generation(&mut conn, &volume, manifest_signed.manifest.generation).await? {
+        // snapshot does not exist yet, all good.
+        None => {},
+        Some(snapshot) => {
+            if snapshot.manifest != manifest_signed {
+                // FIXME: error
+                return Err(StorageError::ManifestInvalid);
+            } else {
+                return Ok(Redirect::to(snapshot.hash().to_hex()));
+            }
+        }
+    };
     let snapshot = Snapshot::create_from_manifest(&mut conn, &volume, &data).await?;
     let snapshot = snapshot.fetch(&mut conn).await?;
     Ok(Redirect::to(snapshot.hash().to_hex()))
