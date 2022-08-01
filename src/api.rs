@@ -1,8 +1,9 @@
 use crate::snapshot::{Snapshot, SnapshotError};
 use crate::volume::{Volume, VolumeError};
 use fractal_auth_client::UserContext;
-use fractal_storage_client::{Hash, Pubkey, VolumeEdit, VolumeInfo};
+use fractal_storage_client::{Hash, Pubkey, ManifestSigned, VolumeEdit, VolumeInfo};
 use rocket::response::Redirect;
+use rocket::response::status::BadRequest;
 use rocket::{
     http::Status,
     request::Request,
@@ -27,27 +28,27 @@ pub enum StorageError {
     Volume(#[from] VolumeError),
     #[error("Manifest Invalid")]
     ManifestInvalid,
-    #[error("Format invalid")]
-    FormatInvalid,
     #[error("Snapshot not found")]
     SnapshotNotFound,
     #[error("Error talking to database: {0:}")]
     Database(#[from] sqlx::Error),
+    #[error("Manifest for generation already exists but is different")]
+    ManifestExists,
 }
 
 impl<'r> Responder<'r, 'static> for StorageError {
     fn respond_to(self, _: &'r Request<'_>) -> response::Result<'static> {
         ::log::error!("Responding with error: {self:?}");
         use StorageError::*;
-        let status = match self {
+        let status = match &self {
             VolumeNotFound => Status::NotFound,
             Internal => Status::InternalServerError,
             ManifestInvalid => Status::BadRequest,
             SnapshotNotFound => Status::NotFound,
-            FormatInvalid => Status::BadRequest,
             Snapshot(_) => Status::InternalServerError,
             Volume(_) => Status::InternalServerError,
             Database(_) => Status::InternalServerError,
+            ManifestExists => Status::BadRequest,
         };
         let message = self.to_string();
         let response = Response::build()
@@ -129,15 +130,15 @@ async fn volume_snapshot_upload(
     let volume = Volume::lookup(&mut conn, &volume)
         .await?
         .ok_or(StorageError::VolumeNotFound)?;
-    let manifest_signed = ManifestSigned::parse(&data)?;
-    match Snapshot::fetch_by_generation(&mut conn, &volume, manifest_signed.manifest.generation).await? {
+    let manifest_signed = ManifestSigned::parse(&data).map_err(|_| StorageError::ManifestInvalid)?;
+    match Snapshot::fetch_by_generation(&mut conn, &volume.volume(), manifest_signed.manifest.generation).await? {
         // snapshot does not exist yet, all good.
         None => {},
         Some(snapshot) => {
-            if snapshot.manifest != manifest_signed {
-                // FIXME: error
-                return Err(StorageError::ManifestInvalid);
+            if *snapshot.manifest_signed() != manifest_signed {
+                return Err(StorageError::ManifestExists);
             } else {
+                info!("Existing manifest for volume {} generation {}", volume.pubkey(), manifest_signed.manifest.generation);
                 return Ok(Redirect::to(snapshot.hash().to_hex()));
             }
         }

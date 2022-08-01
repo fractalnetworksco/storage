@@ -6,15 +6,24 @@ use sqlx::{query, AnyConnection, Row};
 use std::str::FromStr;
 use uuid::Uuid;
 
+
+/// Represents the primary key of a row in the storage_volume table
 #[derive(Clone, Debug)]
 pub struct Volume(i64);
 
+
+/// Represents a row in the storage_volume table
 #[derive(Clone, Debug)]
 pub struct VolumeData {
+    /// Primary key of the volume in the storage_volume table.
     id: i64,
+    /// ED25519 public key of the volume.
     pubkey: Pubkey,
+    /// Account to which the volume belongs.
     account: Uuid,
+    /// Device UUID of the current writer of the volume.
     writer: Option<Uuid>,
+    /// Prevent any changes to the volume in the database.
     locked: bool,
 }
 

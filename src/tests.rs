@@ -253,6 +253,50 @@ async fn can_snapshot_upload() {
 }
 
 #[tokio::test]
+async fn can_snapshot_upload_twice() {
+    with_service(|url| async move {
+        let volume = Privkey::generate();
+        let client = Client::new();
+        let token = Uuid::new_v4();
+        let machine = Uuid::new_v4();
+        volume_create(&url, &client, &token.to_string(), &volume).await?;
+        let manifest = Manifest {
+            generation: 0,
+            path: PathBuf::from_str("/tmp/path").unwrap(),
+            creation: 0,
+            machine,
+            size: 10,
+            size_total: 10,
+            parent: None,
+            data: "ipfs://QmTvXmLGiTV6CoCRvSEMHEKU3oMWsrVSMdhyKGzw9UcAth"
+                .try_into()
+                .unwrap(),
+        };
+        let manifest = manifest.sign(&volume);
+        snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await?;
+        // make sure we can upload the same snapshot twice without error
+        snapshot_upload(
+            &url,
+            &client,
+            &token.to_string(),
+            &volume.pubkey(),
+            &manifest,
+        )
+        .await?;
+        Ok(())
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
 async fn can_snapshot_upload_reject_writer() {
     with_service(|url| async move {
         let volume = Privkey::generate();
