@@ -1,9 +1,9 @@
 use crate::snapshot::{Snapshot, SnapshotError};
 use crate::volume::{Volume, VolumeError};
 use fractal_auth_client::UserContext;
-use fractal_storage_client::{Hash, Pubkey, ManifestSigned, VolumeEdit, VolumeInfo};
-use rocket::response::Redirect;
+use fractal_storage_client::{Hash, ManifestSigned, Pubkey, VolumeEdit, VolumeInfo};
 use rocket::response::status::BadRequest;
+use rocket::response::Redirect;
 use rocket::{
     http::Status,
     request::Request,
@@ -130,15 +130,26 @@ async fn volume_snapshot_upload(
     let volume = Volume::lookup(&mut conn, &volume)
         .await?
         .ok_or(StorageError::VolumeNotFound)?;
-    let manifest_signed = ManifestSigned::parse(&data).map_err(|_| StorageError::ManifestInvalid)?;
-    match Snapshot::fetch_by_generation(&mut conn, &volume.volume(), manifest_signed.manifest.generation).await? {
+    let manifest_signed =
+        ManifestSigned::parse(&data).map_err(|_| StorageError::ManifestInvalid)?;
+    match Snapshot::fetch_by_generation(
+        &mut conn,
+        &volume.volume(),
+        manifest_signed.manifest.generation,
+    )
+    .await?
+    {
         // snapshot does not exist yet, all good.
-        None => {},
+        None => {}
         Some(snapshot) => {
             if *snapshot.manifest_signed() != manifest_signed {
                 return Err(StorageError::ManifestExists);
             } else {
-                info!("Existing manifest for volume {} generation {}", volume.pubkey(), manifest_signed.manifest.generation);
+                info!(
+                    "Existing manifest for volume {} generation {}",
+                    volume.pubkey(),
+                    manifest_signed.manifest.generation
+                );
                 return Ok(Redirect::to(snapshot.hash().to_hex()));
             }
         }

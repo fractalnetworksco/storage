@@ -245,17 +245,18 @@ impl Snapshot {
             Some(row) => Ok(Some(SnapshotData::from_row(&row)?)),
         }
     }
-    
+
     pub async fn fetch_by_generation(
         conn: &mut AnyConnection,
         volume: &Volume,
         generation: u64,
     ) -> Result<Option<SnapshotData>, SnapshotError> {
-        let row = query("SELECT * FROM storage_snapshot WHERE snapshot_generation = ? AND volume_id = ?")
-            .bind(generation as i64)
-            .bind(volume.id())
-            .fetch_optional(conn)
-            .await?;
+        let row =
+            query("SELECT * FROM storage_snapshot WHERE snapshot_generation = ? AND volume_id = ?")
+                .bind(generation as i64)
+                .bind(volume.id())
+                .fetch_optional(conn)
+                .await?;
         match row {
             None => Ok(None),
             Some(row) => Ok(Some(SnapshotData::from_row(&row)?)),

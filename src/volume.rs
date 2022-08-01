@@ -6,11 +6,9 @@ use sqlx::{query, AnyConnection, Row};
 use std::str::FromStr;
 use uuid::Uuid;
 
-
 /// Represents the primary key of a row in the storage_volume table
 #[derive(Clone, Debug)]
 pub struct Volume(i64);
-
 
 /// Represents a row in the storage_volume table
 #[derive(Clone, Debug)]
