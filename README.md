@@ -1,22 +1,8 @@
 # Storage API
 
-This Rust project hosts the storage API, which implements a fully end-to-end
-encrypted and signed blob storage with metadata. Currently, the metadata is
-stored inside of an SQLite database, and the data on disk, however in the
-future this will support different backends (S3-compatible, filecoin, etc).
-
-Building Locally
-
-Insall deps
-```
-sudo apt install libssl-dev pkg-config
-```
-Build
-```
-cargo build --release
-```
-
-
+This projects hosts the storage metadata API, a backend component which hosts
+metadata for storage snapshots, the actual data is housed inside IPFS, and is
+fully end-to-end encrypted.
 
 Builds:
 - [storage-master-amd64][] ([signature][storage-master-amd64.sig])
@@ -27,27 +13,11 @@ Containers:
 - [`registry.gitlab.com/fractalnetworks/storage`][registry]
 
 Resources:
-- [Source Documentation][rustdoc]
-- [API Documentation][openapi] (TODO)
+- Documentation: [nightly][rustdoc]
 
-## Background
+## License
 
-We use this as the backend for our
-volume management. During normal operation, the docker driver periodically
-snapshots the volumes and pushes the data to the storage API.
-
-Every snapshot has a *generation number*, which is a number that is
-incremented every time a transaction is completed on the filesystem.
-This number increments monotonically. We can represent the state of a snapshot
-by the generation number.
-
-There are two types of snapshots:
-- Full snapshots reflect the entire state of the volume. These have the
-  advantage that they can be used to restore the entire volume from scratch.
-  The downside is that they take up a lot of storage, roughly as much as there
-  is data in the volume, plus metadata.
-- Partial or incremental snapshots only store the change of state between two
-  versions
+[AGPL 3.0](LICENSE.md), commercial licensing available upon request.
 
 [storage-master-amd64]: https://fractalnetworks.gitlab.io/storage/storage-master-amd64
 [storage-master-arm64]: https://fractalnetworks.gitlab.io/storage/storage-master-arm64
