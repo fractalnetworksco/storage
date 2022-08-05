@@ -2,6 +2,10 @@
 name = "fractal-storage-client"
 version = "0.2.0"
 edition = "2021"
+authors = ["Patrick Elsen <patrick@fractalnetworks.co>"]
+description = "Client library for Fractal Networks storage service."
+license = "AGPL-3.0-only"
+repository = "https://github.com/fractalnetworksco/storage"
 
 [dependencies]
 anyhow = "1.0.57"

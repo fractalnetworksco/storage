@@ -2,6 +2,10 @@
 name = "fractal-storage"
 version = "0.2.0"
 edition = "2021"
+authors = ["Patrick Elsen <patrick@fractalnetworks.co>"]
+description = "Storage metadata service for Fractal Networks docker plugin."
+license = "AGPL-3.0-only"
+repository = "https://github.com/fractalnetworksco/storage"
 
 [dependencies]
 rocket = { version = "0.5.0-rc", features = ["json"] }
@@ -15,7 +19,7 @@ log = "0.4.14"
 byteorder = "1.4.3"
 fractal-storage-client = { path = "./client", features = ["rocket"] }
 rust-s3 = { version = "0.28.0", default-features = false, features = ["tokio-rustls-tls", "tags"], optional = true }
-fractal-auth-client = { git = "https://gitlab.com/fractalnetworks/libraries/auth-client", features = ["rocket", "static-tokens"] }
+fractal-auth-client = { git = "https://github.com/fractalnetworksco/auth-client", version = "0.1", features = ["rocket"] }
 url = "2.2.2"
 thiserror = "1.0.31"
 uuid = { version = "1.0.0", features = ["v4"] }
