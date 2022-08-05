@@ -13,7 +13,7 @@ fractal-storage-client = { path = "../client" }
 structopt = "0.3.26"
 tokio = { version = "1.18.1", features = ["macros", "rt", "io-std"] }
 url = "2.2.2"
-ipfs-api = { version = "0.15.0", git = "https://github.com/xfbs/rust-ipfs-api" }
-ipfs-api-backend-hyper = { version = "0.4.0", git = "https://github.com/xfbs/rust-ipfs-api", features = ["with-send-sync"] }
+ipfs-api = { version = "0.16.0" }
+ipfs-api-backend-hyper = { version = "0.5.0", features = ["with-send-sync"] }
 tokio-util = { version = "0.6.5", features = ["io"] }
 serde_json = "1.0.81"

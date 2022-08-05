@@ -36,6 +36,3 @@ reqwest = "0.11.10"
 
 [workspace]
 members = [".", "client", "tool"]
-
-[patch.crates-io]
-common-multipart-rfc7578 = { git = "https://github.com/xfbs/rust-multipart-rfc7578" }
