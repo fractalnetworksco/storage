@@ -17,7 +17,7 @@ serde = { version = "1.0.124", features = ["derive"] }
 tokio = { version = "1.3.0", features = ["fs"] }
 log = "0.4.14"
 byteorder = "1.4.3"
-fractal-storage-client = { path = "./client", features = ["rocket"] }
+fractal-storage-client = { path = "./client", version = "0.2.0", features = ["rocket"] }
 rust-s3 = { version = "0.28.0", default-features = false, features = ["tokio-rustls-tls", "tags"], optional = true }
 fractal-auth-client = { git = "https://github.com/fractalnetworksco/auth-client", version = "0.1", features = ["rocket"] }
 url = "2.2.2"
