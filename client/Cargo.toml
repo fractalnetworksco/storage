@@ -21,8 +21,8 @@ cid = { version = "0.8.5", features = ["serde-codec"] }
 ed25519-dalek-fiat = "0.1.0"
 futures = "0.3.21"
 hex = { version = "0.4.3", optional = true }
-ipfs-api = { version = "0.16.0" }
-ipfs-api-backend-hyper = { version = "0.5.0", features = ["with-send-sync"] }
+ipfs-api = { version = "0.16.0", features = ["with-hyper-rustls"] }
+ipfs-api-backend-hyper = { version = "0.5.0", features = ["with-send-sync", "with-hyper-rustls"] }
 log = "0.4.17"
 optional-field = "0.1.2"
 paste = "1.0.7"
